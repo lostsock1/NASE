@@ -6,9 +6,9 @@ logger = logging.getLogger("nase")
 
 
 class MatchedGroup:
-    def __init__(self, base_address: str, quote_address: str):
-        self.base_address = base_address
-        self.quote_address = quote_address
+    def __init__(self, base_symbol: str, quote_symbol: str):
+        self.base_symbol = base_symbol
+        self.quote_symbol = quote_symbol
         self.quotes: list[PriceQuote] = []
 
     @property
@@ -26,11 +26,11 @@ class Matcher:
         groups: dict[tuple[str, str], MatchedGroup] = {}
 
         for q in quotes:
-            key = (q.pair.base.address.lower(), q.pair.quote.address.lower())
+            key = (q.pair.base.symbol.upper(), q.pair.quote.symbol.upper())
             if key not in groups:
                 groups[key] = MatchedGroup(
-                    base_address=q.pair.base.address,
-                    quote_address=q.pair.quote.address,
+                    base_symbol=q.pair.base.symbol,
+                    quote_symbol=q.pair.quote.symbol,
                 )
             groups[key].quotes.append(q)
 
