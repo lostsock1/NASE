@@ -1,0 +1,59 @@
+refresh_interval_seconds: 5
+
+arb_types:
+  simple: true
+  triangular: false
+  cross_chain: false
+
+filters:
+  min_profit_usd: 5.00
+  max_opportunities: 100
+
+capital:
+  amount_usd: 0.0
+
+chain_gas_estimates:
+  ethereum: 8.00
+  arbitrum: 0.50
+  base: 0.30
+  optimism: 0.30
+  polygon: 0.10
+  bsc: 0.25
+  avalanche: 0.40
+  solana: 0.01
+
+cross_chain_bridge_costs:
+  arbitrum_to_ethereum: 4.00
+  base_to_ethereum: 2.00
+  optimism_to_ethereum: 2.00
+  polygon_to_ethereum: 3.00
+
+sources:
+  dexscreener:
+    enabled: true
+    base_url: "https://api.dexscreener.io"
+    max_rps: 5
+    max_concurrent: 3
+    timeout_seconds: 30
+  dexpaprika:
+    enabled: true
+    base_url: "https://api.dexpaprika.com"
+    max_rps: 10
+    max_concurrent: 5
+    timeout_seconds: 30
+  swapapi:
+    enabled: true
+    base_url: "https://swapapi.io/api/v1"
+    max_rps: 3
+    max_concurrent: 2
+    timeout_seconds: 30
+
+chains:
+  - ethereum
+  - arbitrum
+  - base
+  - optimism
+  - polygon
+  - bsc
+  - avalanche
+  - solana
