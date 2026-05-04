@@ -15,12 +15,18 @@ class Scanner:
         self._gas_estimates = config.chain_gas_estimates
         self._bridge_costs = config.cross_chain_bridge_costs
 
-    def scan(self, groups: list[MatchedGroup], enabled_arb_types: list[str]) -> list[Opportunity]:
+    def scan(
+        self,
+        groups: list[MatchedGroup],
+        enabled_arb_types: list[str],
+        buy_mode: str = "ask",
+        sell_mode: str = "bid",
+    ) -> list[Opportunity]:
         opportunities: list[Opportunity] = []
 
         if "simple" in enabled_arb_types:
             for group in groups:
-                opp = self._scan_simple(group)
+                opp = self._scan_simple(group, buy_mode, sell_mode)
                 if opp:
                     opportunities.append(opp)
 
@@ -35,21 +41,32 @@ class Scanner:
         logger.info("Scanned: %d opportunities found", len(opportunities))
         return opportunities
 
-    def _scan_simple(self, group: MatchedGroup) -> Opportunity | None:
+    @staticmethod
+    def _price(q, mode: str) -> Decimal:
+        if mode == "bid":
+            return q.bid_price
+        if mode == "mid":
+            return q.mid_price
+        return q.ask_price
+
+    def _scan_simple(
+        self, group: MatchedGroup, buy_mode: str, sell_mode: str
+    ) -> Opportunity | None:
         if not group.quotes:
             return None
-        buy = min(group.quotes, key=lambda q: q.ask_price)
-        sell = max(group.quotes, key=lambda q: q.bid_price)
+        buy = min(group.quotes, key=lambda q: self._price(q, buy_mode))
+        sell = max(group.quotes, key=lambda q: self._price(q, sell_mode))
         if buy is None or sell is None:
             return None
         if buy.dex == sell.dex:
             return None
-        if buy.ask_price <= 0 or sell.bid_price <= 0:
+
+        buy_p = self._price(buy, buy_mode)
+        sell_p = self._price(sell, sell_mode)
+        if buy_p <= 0 or sell_p <= 0:
             return None
 
-        spread_pct = float(
-            ((sell.bid_price - buy.ask_price) / buy.ask_price) * Decimal("100")
-        )
+        spread_pct = float(((sell_p - buy_p) / buy_p) * Decimal("100"))
         if spread_pct <= 0:
             return None
 
@@ -63,8 +80,8 @@ class Scanner:
             pair=buy.pair,
             buy_at_dex=buy.dex,
             sell_at_dex=sell.dex,
-            buy_price=buy.ask_price,
-            sell_price=sell.bid_price,
+            buy_price=buy_p,
+            sell_price=sell_p,
             spread_pct=round(spread_pct, 4),
             net_profit_usd=round(net, 2),
             source_apis=sources,

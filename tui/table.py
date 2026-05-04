@@ -12,13 +12,13 @@ class OpportunityTable(DataTable):
 
     def on_mount(self) -> None:
         self.cursor_type = "row"
-        self.add_columns("#", "Pair", "Buy At", "Sell At", "Spread", "Profit", "Age", "Ch")
+        self.add_columns("#", "Pair", "Buy At", "Sell At", "Spread", "Profit", "Age", "Chain")
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
         self.clear()
         for i, o in enumerate(opportunities, 1):
             age = f"{o.age_seconds:.0f}s"
-            chain_short = o.pair.chain[:2].upper()
+            chain_label = o.pair.chain[:4].title()
             if use_capital and o.net_profit_usd > 0:
                 profit = f"${o.net_profit_usd:,.2f}"
             elif not use_capital:
@@ -35,7 +35,7 @@ class OpportunityTable(DataTable):
                 spread_color,
                 profit,
                 age,
-                chain_short,
+                chain_label,
                 key=o.pair.pair_address,
             )
 
