@@ -155,7 +155,8 @@ class NaseApp(App):
         )
         table = self.query_one(OpportunityTable)
         table.update_data(opps, use_capital)
-        self.refresh()
+        self.query_one(HeaderBar).refresh()
+        self.query_one(StatusBar).refresh()
 
     @staticmethod
     def _count_chains(quotes: list) -> dict[str, int]:
