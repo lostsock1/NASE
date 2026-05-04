@@ -1,5 +1,6 @@
 import asyncio
 import time
+import webbrowser
 from collections import defaultdict
 
 from textual.app import App, ComposeResult
@@ -47,6 +48,7 @@ class NaseApp(App):
         ("c", "set_capital", "Set Capital"),
         ("r", "force_refresh", "Force Refresh"),
         ("h", "toggle_help", "Help"),
+        ("o", "open_link", "Open in Browser"),
         ("plus", "increase_threshold", "Increase Threshold"),
         ("minus", "decrease_threshold", "Decrease Threshold"),
         ("enter", "show_detail", "Show Detail"),
@@ -215,6 +217,20 @@ class NaseApp(App):
         self._config.filters.min_profit_usd = self._pipeline_data["min_profit"]
         self.query_one(ControlsBar).refresh()
 
+    def action_open_link(self) -> None:
+        table = self.query_one(OpportunityTable)
+        if table.cursor_row is None:
+            return
+        try:
+            key = table.ordered_rows[table.cursor_row].value
+            for o in self._opportunities:
+                if o.pair.pair_address == key:
+                    url = f"https://dexscreener.com/{o.pair.chain}/{o.pair.pair_address}"
+                    webbrowser.open(url)
+                    return
+        except Exception:
+            pass
+
 
 class CapitalModal(ModalScreen[float | None]):
     CSS = """
@@ -255,9 +271,9 @@ class HelpModal(ModalScreen[None]):
         yield Static(
             "[bold]NASE Controls[/]\n\n"
             "q       Quit\n"
-            "a       Toggle arbitrage types\n"
-            "s       Change sort column\n"
             "c       Set capital amount\n"
+            "o       Open pair in browser\n"
+            "s       Change sort column\n"
             "+/-     Adjust min profit threshold ($1)\n"
             "r       Force refresh\n"
             "h       Show/hide this help\n"
