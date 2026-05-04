@@ -13,7 +13,7 @@ class OpportunityTable(DataTable):
 
     def on_mount(self) -> None:
         self.cursor_type = "row"
-        self.add_columns("#", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "Buy $", "Sell $", "Spread", "Profit", "Age")
+        self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "Buy $", "Sell $", "Spread", "Profit", "Age")
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
         self.clear()
@@ -33,7 +33,8 @@ class OpportunityTable(DataTable):
             spread_color = self._spread_style(o.spread_pct, o.age_seconds)
             self.add_row(
                 str(i),
-                f"{o.pair.base.symbol}\u2192{o.pair.quote.symbol}",
+                o.pair.base.symbol,
+                f"{o.pair.base.symbol}/{o.pair.quote.symbol}",
                 src_chain,
                 o.buy_at_dex,
                 o.sell_at_dex,
