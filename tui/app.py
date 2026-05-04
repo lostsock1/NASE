@@ -43,7 +43,6 @@ class NaseApp(App):
 
     BINDINGS = [
         ("q", "quit", "Quit"),
-        ("a", "toggle_arb", "Toggle Arb Type"),
         ("s", "change_sort", "Change Sort"),
         ("c", "set_capital", "Set Capital"),
         ("r", "force_refresh", "Force Refresh"),
@@ -68,7 +67,6 @@ class NaseApp(App):
             "opportunity_count": 0,
             "statuses": {},
             "chain_counts": {},
-            "active_arb_types": config.enabled_arb_types,
             "capital": config.capital.amount_usd,
             "min_profit": config.filters.min_profit_usd,
             "sort_column": "profit",
@@ -140,8 +138,8 @@ class NaseApp(App):
         self._all_quotes = self._normalizer.normalize_all(raw)
         for q in self._all_quotes:
             self._seen_pair_addrs.add(q.pair.pair_address.lower())
-        groups = self._matcher.match(self._all_quotes, self._pipeline_data["active_arb_types"])
-        opps = self._scanner.scan(groups, self._pipeline_data["active_arb_types"])
+        groups = self._matcher.match(self._all_quotes)
+        opps = self._scanner.scan(groups)
         use_capital = self._pipeline_data["capital"] > 0
         if use_capital:
             old_cap = self._config.capital.amount_usd
@@ -171,17 +169,6 @@ class NaseApp(App):
         for q in quotes:
             counts[q.pair.chain] += 1
         return dict(sorted(counts.items(), key=lambda x: x[1], reverse=True))
-
-    def action_toggle_arb(self) -> None:
-        state = self._pipeline_data["active_arb_types"]
-        if state == ["simple"]:
-            self._pipeline_data["active_arb_types"] = ["simple", "triangular"]
-        elif "triangular" in state and "cross_chain" not in state:
-            self._pipeline_data["active_arb_types"] = ["simple", "triangular", "cross_chain"]
-        elif "cross_chain" in state:
-            self._pipeline_data["active_arb_types"] = ["simple"]
-        self.query_one(ControlsBar).refresh()
-        asyncio.create_task(self._run_single_cycle())
 
     def action_change_sort(self) -> None:
         cols = ["profit", "spread", "age", "pair"]

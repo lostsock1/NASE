@@ -8,6 +8,8 @@ from util.config import Config
 
 logger = logging.getLogger("nase")
 
+DEFAULT_BRIDGE_COST = 10.00
+
 
 class Scanner:
     def __init__(self, config: Config):
@@ -15,38 +17,26 @@ class Scanner:
         self._gas_estimates = config.chain_gas_estimates
         self._bridge_costs = config.cross_chain_bridge_costs
 
-    def scan(
-        self,
-        groups: list[MatchedGroup],
-        enabled_arb_types: list[str],
-    ) -> list[Opportunity]:
+    def scan(self, groups: list[MatchedGroup]) -> list[Opportunity]:
         opportunities: list[Opportunity] = []
 
-        if "simple" in enabled_arb_types:
-            for group in groups:
-                opp = self._scan_simple(group)
-                if opp:
-                    opportunities.append(opp)
-
-        if "triangular" in enabled_arb_types:
-            tri = self._scan_triangular(groups)
-            opportunities.extend(tri)
-
-        if "cross_chain" in enabled_arb_types:
-            cross = self._scan_cross_chain(groups)
-            opportunities.extend(cross)
+        for group in groups:
+            opp = self._scan_group(group)
+            if opp:
+                opportunities.append(opp)
 
         logger.info("Scanned: %d opportunities found", len(opportunities))
         return opportunities
 
-    def _scan_simple(self, group: MatchedGroup) -> Opportunity | None:
+    def _scan_group(self, group: MatchedGroup) -> Opportunity | None:
         if not group.quotes:
             return None
+
         buy = min(group.quotes, key=lambda q: q.ask_price)
         sell = max(group.quotes, key=lambda q: q.bid_price)
         if buy is None or sell is None:
             return None
-        if buy.dex == sell.dex:
+        if buy.dex == sell.dex and buy.pair.chain == sell.pair.chain:
             return None
         if buy.ask_price <= 0 or sell.bid_price <= 0:
             return None
@@ -57,10 +47,13 @@ class Scanner:
         if spread_pct <= 0:
             return None
 
-        gas = self._gas_estimates.get(group.chain, 5.0)
+        buy_chain = buy.pair.chain
+        sell_chain = sell.pair.chain
+
+        cost = self._estimate_cost(buy_chain, sell_chain)
         net = 0.0
         if self.config.capital.amount_usd > 0:
-            net = (spread_pct / 100.0) * self.config.capital.amount_usd - gas
+            net = (spread_pct / 100.0) * self.config.capital.amount_usd - cost
 
         sources = sorted(set(q.source_api for q in group.quotes))
         return Opportunity(
@@ -71,12 +64,15 @@ class Scanner:
             sell_price=sell.bid_price,
             spread_pct=round(spread_pct, 4),
             net_profit_usd=round(net, 2),
+            buy_chain=buy_chain,
+            sell_chain=sell_chain,
             source_apis=sources,
             detected_at=time.time(),
         )
 
-    def _scan_triangular(self, groups: list[MatchedGroup]) -> list[Opportunity]:
-        return []
-
-    def _scan_cross_chain(self, groups: list[MatchedGroup]) -> list[Opportunity]:
-        return []
+    def _estimate_cost(self, buy_chain: str, sell_chain: str) -> float:
+        if buy_chain == sell_chain:
+            return self._gas_estimates.get(buy_chain, 5.0)
+        key = f"{buy_chain}_to_{sell_chain}"
+        key_rev = f"{sell_chain}_to_{buy_chain}"
+        return self._bridge_costs.get(key) or self._bridge_costs.get(key_rev) or DEFAULT_BRIDGE_COST

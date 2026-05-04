@@ -67,6 +67,8 @@ class Opportunity:
     sell_price: Decimal
     spread_pct: float
     net_profit_usd: float
+    buy_chain: str = ""
+    sell_chain: str = ""
     source_apis: list[str] = field(default_factory=list)
     detected_at: float = field(default_factory=time.time)
 
