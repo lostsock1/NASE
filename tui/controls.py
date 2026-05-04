@@ -23,7 +23,6 @@ class ControlsBar(Static):
         min_profit = self.app._pipeline_data.get("min_profit", 5.0)
         return (
             f"[bold]ARB:[/] {arb_simple} {arb_tri} {arb_cross}    "
-            f"[bold]BUY:[/] [bold]{buy_mode}[/bold]  [bold]SELL:[/] [bold]{sell_mode}[/bold]    "
             f"[bold]CAPITAL:[/] {cap_text}    "
-            f"[bold]MIN:[/] [bold]${min_profit:,.2f}[/bold]"
+            f"[bold]MIN:[/] [bold]${min_profit:,.2f}[/]"
         )

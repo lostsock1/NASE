@@ -45,8 +45,6 @@ class NaseApp(App):
         ("q", "quit", "Quit"),
         ("a", "toggle_arb", "Toggle Arb Type"),
         ("s", "change_sort", "Change Sort"),
-        ("b", "cycle_buy_mode", "Cycle Buy Price"),
-        ("B", "cycle_sell_mode", "Cycle Sell Price"),
         ("c", "set_capital", "Set Capital"),
         ("r", "force_refresh", "Force Refresh"),
         ("h", "toggle_help", "Help"),
@@ -71,8 +69,6 @@ class NaseApp(App):
             "statuses": {},
             "chain_counts": {},
             "active_arb_types": config.enabled_arb_types,
-            "buy_price_mode": "ask",
-            "sell_price_mode": "bid",
             "capital": config.capital.amount_usd,
             "min_profit": config.filters.min_profit_usd,
             "sort_column": "profit",
@@ -145,12 +141,7 @@ class NaseApp(App):
         for q in self._all_quotes:
             self._seen_pair_addrs.add(q.pair.pair_address.lower())
         groups = self._matcher.match(self._all_quotes, self._pipeline_data["active_arb_types"])
-        opps = self._scanner.scan(
-            groups,
-            self._pipeline_data["active_arb_types"],
-            buy_mode=self._pipeline_data["buy_price_mode"],
-            sell_mode=self._pipeline_data["sell_price_mode"],
-        )
+        opps = self._scanner.scan(groups, self._pipeline_data["active_arb_types"])
         use_capital = self._pipeline_data["capital"] > 0
         if use_capital:
             old_cap = self._config.capital.amount_usd
@@ -190,22 +181,6 @@ class NaseApp(App):
         elif "cross_chain" in state:
             self._pipeline_data["active_arb_types"] = ["simple"]
         self.query_one(ControlsBar).refresh()
-
-    def action_cycle_buy_mode(self) -> None:
-        modes = ["ask", "bid", "mid"]
-        cur = self._pipeline_data["buy_price_mode"]
-        idx = (modes.index(cur) + 1) % len(modes)
-        self._pipeline_data["buy_price_mode"] = modes[idx]
-        self.query_one(ControlsBar).refresh()
-        asyncio.create_task(self._run_single_cycle())
-
-    def action_cycle_sell_mode(self) -> None:
-        modes = ["ask", "bid", "mid"]
-        cur = self._pipeline_data["sell_price_mode"]
-        idx = (modes.index(cur) + 1) % len(modes)
-        self._pipeline_data["sell_price_mode"] = modes[idx]
-        self.query_one(ControlsBar).refresh()
-        asyncio.create_task(self._run_single_cycle())
 
     def action_change_sort(self) -> None:
         cols = ["profit", "spread", "age", "pair"]
