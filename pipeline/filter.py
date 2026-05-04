@@ -48,6 +48,7 @@ class ResultFilter:
                     buy_chain=o.buy_chain,
                     sell_chain=o.sell_chain,
                     sell_pair_address=o.sell_pair_address,
+                    liquidity_usd=o.liquidity_usd,
                     source_apis=o.source_apis,
                     detected_at=o.detected_at,
                 )
@@ -82,6 +83,7 @@ class ResultFilter:
                     buy_chain=obj.buy_chain,
                     sell_chain=obj.sell_chain,
                     sell_pair_address=obj.sell_pair_address,
+                    liquidity_usd=obj.liquidity_usd,
                     source_apis=combined,
                     detected_at=min(o.detected_at, existing.detected_at),
                 )

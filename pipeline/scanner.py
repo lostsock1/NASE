@@ -67,6 +67,7 @@ class Scanner:
             buy_chain=buy_chain,
             sell_chain=sell_chain,
             sell_pair_address=sell.pair.pair_address,
+            liquidity_usd=buy.liquidity_usd,
             source_apis=sources,
             detected_at=time.time(),
         )

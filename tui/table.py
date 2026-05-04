@@ -14,7 +14,7 @@ class OpportunityTable(DataTable):
 
     def on_mount(self) -> None:
         self.cursor_type = "row"
-        self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "Buy $", "Sell $", "Spread", "Profit", "Age")
+        self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "TVL", "Buy $", "Sell $", "Spread", "Profit", "Age")
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
         selected_key: str | None = None
@@ -32,6 +32,7 @@ class OpportunityTable(DataTable):
             age = f"{o.age_seconds:.0f}s"
             src_chain = o.buy_chain.title()
             rcv_chain = o.sell_chain.title()
+            tvl_str = _fmt_tvl(o.liquidity_usd)
             buy_str = _fmt_price(o.buy_price)
             sell_str = _fmt_price(o.sell_price)
             if use_capital and o.net_profit_usd > 0:
@@ -50,6 +51,7 @@ class OpportunityTable(DataTable):
                 o.buy_at_dex,
                 o.sell_at_dex,
                 rcv_chain,
+                tvl_str,
                 buy_str,
                 sell_str,
                 spread_color,
@@ -87,3 +89,13 @@ def _fmt_price(p: Decimal) -> str:
     if f >= 0.01:
         return f"${f:,.4f}"
     return f"${f:,.6f}"
+
+
+def _fmt_tvl(v: float) -> str:
+    if v <= 0:
+        return "$0"
+    if v >= 1_000_000:
+        return f"${v/1_000_000:,.1f}M"
+    if v >= 1_000:
+        return f"${v/1_000:,.0f}K"
+    return f"${v:,.0f}"
