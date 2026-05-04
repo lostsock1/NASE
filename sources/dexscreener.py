@@ -20,6 +20,7 @@ class DexScreenerSource(Source):
         self._seen_pairs: set[str] = set()
 
     async def _fetch_impl(self) -> list[PriceQuote]:
+        self._seen_pairs.clear()
         quotes: list[PriceQuote] = []
         known = self._get_tokens_to_search()
         searches = [self._search_token(symbol) for symbol in known]

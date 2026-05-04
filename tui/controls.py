@@ -20,8 +20,7 @@ class ControlsBar(Static):
         cap_text = f"[bold]${capital:,.0f}[/]" if capital > 0 else "[dim]$0[/]"
         min_profit = self.app._pipeline_data.get("min_profit", 5.0)
         return (
-            f"ARB: {arb_simple} {arb_tri} {arb_cross}    "
-            f"CAPITAL: {cap_text}    "
-            f"MIN PROFIT: [bold]${min_profit:,.2f}[/]    "
-            f"[dim][s] sort  [a] toggle arb  [c] capital  [+/-] threshold[/]"
+            f"[bold]ARB:[/] {arb_simple} {arb_tri} {arb_cross}    "
+            f"[bold]CAPITAL:[/] {cap_text}    "
+            f"[bold]MIN PROFIT:[/] [bold]${min_profit:,.2f}[/]"
         )

@@ -3,6 +3,7 @@ import time
 from collections import defaultdict
 
 from textual.app import App, ComposeResult
+from textual.screen import ModalScreen
 from textual.widgets import Footer
 
 from tui.header import HeaderBar
@@ -202,14 +203,13 @@ class NaseApp(App):
             pass
 
     def action_set_capital(self) -> None:
-        self.mount(InputCapital())
-        self.query_one(InputCapital).focus()
+        self.push_screen(CapitalModal())
 
     def action_force_refresh(self) -> None:
         asyncio.create_task(self._run_single_cycle())
 
     def action_toggle_help(self) -> None:
-        self.mount(HelpOverlay())
+        self.push_screen(HelpModal())
 
     def action_increase_threshold(self) -> None:
         self._pipeline_data["min_profit"] += 1.0
@@ -222,10 +222,14 @@ class NaseApp(App):
         self.query_one(ControlsBar).refresh()
 
 
-class InputCapital(App[float | None]):
+class CapitalModal(ModalScreen[float | None]):
     CSS = """
-    Screen { align: center middle; }
-    Input { width: 30; }
+    CapitalModal {
+        align: center middle;
+    }
+    CapitalModal Input {
+        width: 30;
+    }
     """
 
     def compose(self) -> ComposeResult:
@@ -237,15 +241,18 @@ class InputCapital(App[float | None]):
     def on_input_submitted(self, event) -> None:
         try:
             val = float(event.value)
+            self.app._pipeline_data["capital"] = val
+            self.app.query_one(ControlsBar).refresh()
         except ValueError:
-            self.exit(None)
-            return
-        self.exit(val)
+            pass
+        self.dismiss()
 
 
-class HelpOverlay(App[None]):
+class HelpModal(ModalScreen[None]):
     CSS = """
-    Screen { align: center middle; }
+    HelpModal {
+        align: center middle;
+    }
     """
 
     def compose(self) -> ComposeResult:
@@ -265,4 +272,4 @@ class HelpOverlay(App[None]):
         )
 
     def on_key(self, event) -> None:
-        self.exit(None)
+        self.dismiss(None)
