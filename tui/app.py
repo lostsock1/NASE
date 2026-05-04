@@ -270,7 +270,18 @@ class HelpModal(ModalScreen[None]):
     HelpModal {
         align: center middle;
     }
+    HelpModal Static {
+        padding: 1 2;
+        background: $panel;
+        border: solid $accent;
+    }
     """
+
+    BINDINGS = [
+        ("escape", "dismiss_help", "Close"),
+        ("q", "dismiss_help", "Close"),
+        ("h", "dismiss_help", "Close"),
+    ]
 
     def compose(self) -> ComposeResult:
         from textual.widgets import Static
@@ -286,8 +297,11 @@ class HelpModal(ModalScreen[None]):
             "+/-     Adjust min profit threshold ($1)\n"
             "h       Show/hide this help\n"
             "Enter   View detail for selected row\n"
-            "Press any key to dismiss\n"
+            "Esc     Close this help\n"
         )
+
+    def action_dismiss_help(self) -> None:
+        self.dismiss(None)
 
     def on_key(self, event) -> None:
         self.dismiss(None)
