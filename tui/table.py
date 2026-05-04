@@ -16,11 +16,10 @@ class OpportunityTable(DataTable):
         self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "Buy $", "Sell $", "Spread", "Profit", "Age")
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
-        # Save current selection before clearing
         selected_key: str | None = None
-        if self.cursor_row is not None:
+        if self.cursor_row is not None and self.row_count > 0:
             try:
-                selected_key = self.get_row_at(self.cursor_row)[-1]
+                selected_key = self.ordered_rows[self.cursor_row].value
             except Exception:
                 pass
 
@@ -55,11 +54,10 @@ class OpportunityTable(DataTable):
                 key=o.pair.pair_address,
             )
 
-        # Restore cursor to the row with the same key, if it still exists
         if selected_key is not None and self.row_count > 0:
             for row_idx in range(self.row_count):
                 try:
-                    if self.get_row_at(row_idx)[-1] == selected_key:
+                    if self.ordered_rows[row_idx].value == selected_key:
                         self.move_cursor(row=row_idx, column=0, animate=False)
                         break
                 except Exception:
