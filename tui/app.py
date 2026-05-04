@@ -181,6 +181,7 @@ class NaseApp(App):
         elif "cross_chain" in state:
             self._pipeline_data["active_arb_types"] = ["simple"]
         self.query_one(ControlsBar).refresh()
+        asyncio.create_task(self._run_single_cycle())
 
     def action_change_sort(self) -> None:
         cols = ["profit", "spread", "age", "pair"]
