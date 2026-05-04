@@ -219,17 +219,13 @@ class NaseApp(App):
 
     def action_open_link(self) -> None:
         table = self.query_one(OpportunityTable)
-        if table.cursor_row is None:
+        if table.cursor_row is None or not self._opportunities:
             return
-        try:
-            key = table.ordered_rows[table.cursor_row].value
-            for o in self._opportunities:
-                if o.pair.pair_address == key:
-                    url = f"https://dexscreener.com/{o.pair.chain}/{o.pair.pair_address}"
-                    webbrowser.open(url)
-                    return
-        except Exception:
-            pass
+        idx = table.cursor_row
+        if idx < len(self._opportunities):
+            o = self._opportunities[idx]
+            url = f"https://dexscreener.com/{o.buy_chain}/{o.pair.pair_address}"
+            webbrowser.open(url)
 
 
 class CapitalModal(ModalScreen[float | None]):
