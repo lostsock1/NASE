@@ -1,4 +1,3 @@
-from textual.geometry import Region  # noqa
 from textual.widgets import DataTable
 from textual.coordinate import Coordinate
 from decimal import Decimal
@@ -18,7 +17,6 @@ class OpportunityTable(DataTable):
         self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "Buy $", "Sell $", "Spread", "Profit", "Age")
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
-        # Save key of currently-selected row
         selected_key: str | None = None
         if self.cursor_row is not None and self.row_count > 0:
             try:
@@ -26,7 +24,10 @@ class OpportunityTable(DataTable):
             except Exception:
                 pass
 
-        self.clear()
+        # Remove all current rows in reverse to avoid cursor bounce
+        for key in [r.value for r in reversed(self.ordered_rows)]:
+            self.remove_row(key)
+
         for i, o in enumerate(opportunities, 1):
             age = f"{o.age_seconds:.0f}s"
             src_chain = o.buy_chain.title()
@@ -61,13 +62,10 @@ class OpportunityTable(DataTable):
             for row_idx in range(self.row_count):
                 try:
                     if self.ordered_rows[row_idx].value == selected_key:
-                        self.set_timer(0, lambda r=row_idx: self._restore(r))
+                        self.cursor_coordinate = Coordinate(0, row_idx)
                         break
                 except Exception:
                     pass
-
-    def _restore(self, row_idx: int) -> None:
-        self.cursor_coordinate = Coordinate(0, row_idx)
 
     @staticmethod
     def _spread_style(spread_pct: float, age: float) -> str:
