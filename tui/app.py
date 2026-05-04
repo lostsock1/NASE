@@ -112,7 +112,8 @@ class NaseApp(App):
             self._collector.register(
                 DexPaprikaSource(
                     self._config.sources["dexpaprika"],
-                    os.getenv("DEXPAPRIKA_API_KEY"),
+                    chains=self._config.chains,
+                    api_key=os.getenv("DEXPAPRIKA_API_KEY"),
                 )
             )
         if self._config.sources.get("swapapi") and self._config.sources["swapapi"].enabled:
