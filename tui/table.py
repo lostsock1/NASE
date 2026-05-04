@@ -33,7 +33,7 @@ class OpportunityTable(DataTable):
             spread_color = self._spread_style(o.spread_pct, o.age_seconds)
             self.add_row(
                 str(i),
-                f"{o.pair.base.symbol}/{o.pair.quote.symbol}",
+                f"{o.pair.base.symbol}\u2192{o.pair.quote.symbol}",
                 src_chain,
                 o.buy_at_dex,
                 o.sell_at_dex,
