@@ -1,4 +1,5 @@
 from textual.widgets import DataTable
+from decimal import Decimal
 
 from models.types import Opportunity
 
@@ -12,13 +13,15 @@ class OpportunityTable(DataTable):
 
     def on_mount(self) -> None:
         self.cursor_type = "row"
-        self.add_columns("#", "Pair", "Buy At", "Sell At", "Spread", "Profit", "Age", "Chain")
+        self.add_columns("#", "Pair", "Buy At", "Sell At", "Buy $", "Sell $", "Spread", "Profit", "Age", "Chain")
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
         self.clear()
         for i, o in enumerate(opportunities, 1):
             age = f"{o.age_seconds:.0f}s"
             chain_label = o.pair.chain.title()
+            buy_str = _fmt_price(o.buy_price)
+            sell_str = _fmt_price(o.sell_price)
             if use_capital and o.net_profit_usd > 0:
                 profit = f"${o.net_profit_usd:,.2f}"
             elif not use_capital:
@@ -32,6 +35,8 @@ class OpportunityTable(DataTable):
                 f"{o.pair.base.symbol}/{o.pair.quote.symbol}",
                 o.buy_at_dex,
                 o.sell_at_dex,
+                buy_str,
+                sell_str,
                 spread_color,
                 profit,
                 age,
@@ -50,3 +55,12 @@ class OpportunityTable(DataTable):
         else:
             return f"{spread_pct:.2f}%"
         return f"[{color}]{spread_pct:.2f}%[/]"
+
+
+def _fmt_price(p: Decimal) -> str:
+    f = float(p)
+    if f >= 1:
+        return f"${f:,.2f}"
+    if f >= 0.01:
+        return f"${f:,.4f}"
+    return f"${f:,.6f}"
