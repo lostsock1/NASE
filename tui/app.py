@@ -88,6 +88,7 @@ class NaseApp(App):
 
     async def on_mount(self) -> None:
         self._setup_sources()
+        self._pipeline_data["statuses"] = self._collector.source_statuses
         await self._collector.start_all()
         self._cycle_task = asyncio.create_task(self._run_cycles())
 
