@@ -100,7 +100,7 @@ class DexPaprikaSource(Source):
                     dex=p.get("dex_name", p.get("dex_id", "unknown")),
                     source_api="dexpaprika",
                     ask_price=price,
-                    bid_price=price,
+                    bid_price=price + self._spread_estimate(p),
                     liquidity_usd=0.0,
                     volume_24h_usd=float(p.get("volume_usd", 0) or 0),
                     fetched_at=now,
@@ -111,3 +111,10 @@ class DexPaprikaSource(Source):
                 continue
 
         return quotes
+
+    @staticmethod
+    def _spread_estimate(p: dict) -> Decimal:
+        change = p.get("last_price_change_usd_24h")
+        if change is None:
+            return Decimal("0")
+        return abs(Decimal(str(change)))
