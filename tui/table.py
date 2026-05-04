@@ -16,6 +16,14 @@ class OpportunityTable(DataTable):
         self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "Buy $", "Sell $", "Spread", "Profit", "Age")
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
+        # Save current selection before clearing
+        selected_key: str | None = None
+        if self.cursor_row is not None:
+            try:
+                selected_key = self.get_row_at(self.cursor_row)[-1]
+            except Exception:
+                pass
+
         self.clear()
         for i, o in enumerate(opportunities, 1):
             age = f"{o.age_seconds:.0f}s"
@@ -46,6 +54,16 @@ class OpportunityTable(DataTable):
                 age,
                 key=o.pair.pair_address,
             )
+
+        # Restore cursor to the row with the same key, if it still exists
+        if selected_key is not None and self.row_count > 0:
+            for row_idx in range(self.row_count):
+                try:
+                    if self.get_row_at(row_idx)[-1] == selected_key:
+                        self.move_cursor(row=row_idx, column=0, animate=False)
+                        break
+                except Exception:
+                    pass
 
     @staticmethod
     def _spread_style(spread_pct: float, age: float) -> str:
