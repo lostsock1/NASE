@@ -1,4 +1,6 @@
+from textual.geometry import Region  # noqa
 from textual.widgets import DataTable
+from textual.coordinate import Coordinate
 from decimal import Decimal
 
 from models.types import Opportunity
@@ -16,6 +18,7 @@ class OpportunityTable(DataTable):
         self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "Buy $", "Sell $", "Spread", "Profit", "Age")
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
+        # Save key of currently-selected row
         selected_key: str | None = None
         if self.cursor_row is not None and self.row_count > 0:
             try:
@@ -58,10 +61,13 @@ class OpportunityTable(DataTable):
             for row_idx in range(self.row_count):
                 try:
                     if self.ordered_rows[row_idx].value == selected_key:
-                        self.move_cursor(row=row_idx, column=0, animate=False)
+                        self.set_timer(0, lambda r=row_idx: self._restore(r))
                         break
                 except Exception:
                     pass
+
+    def _restore(self, row_idx: int) -> None:
+        self.cursor_coordinate = Coordinate(0, row_idx)
 
     @staticmethod
     def _spread_style(spread_pct: float, age: float) -> str:
