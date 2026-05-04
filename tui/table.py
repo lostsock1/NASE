@@ -18,7 +18,7 @@ class OpportunityTable(DataTable):
         self.clear()
         for i, o in enumerate(opportunities, 1):
             age = f"{o.age_seconds:.0f}s"
-            chain_label = o.pair.chain[:4].title()
+            chain_label = o.pair.chain.title()
             if use_capital and o.net_profit_usd > 0:
                 profit = f"${o.net_profit_usd:,.2f}"
             elif not use_capital:
