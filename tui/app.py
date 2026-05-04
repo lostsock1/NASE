@@ -46,6 +46,7 @@ class NaseApp(App):
         ("q", "quit", "Quit"),
         ("s", "change_sort", "Change Sort"),
         ("c", "set_capital", "Set Capital"),
+        ("d", "cycle_delay", "Cycle Refresh"),
         ("r", "force_refresh", "Force Refresh"),
         ("h", "toggle_help", "Help"),
         ("o", "open_link", "Open in Browser"),
@@ -71,6 +72,7 @@ class NaseApp(App):
             "chain_counts": {},
             "capital": config.capital.amount_usd,
             "min_profit": config.filters.min_profit_usd,
+            "refresh_delay": int(config.refresh_interval_seconds),
             "sort_column": "profit",
         }
         self._opportunities: list = []
@@ -132,7 +134,7 @@ class NaseApp(App):
             await self._run_single_cycle()
             elapsed = time.monotonic() - cycle_start
             self._pipeline_data["cycle_time"] = elapsed
-            sleep_for = max(0, self._config.refresh_interval_seconds - elapsed)
+            sleep_for = max(0, self._pipeline_data["refresh_delay"] - elapsed)
             await asyncio.sleep(sleep_for)
 
     async def _run_single_cycle(self) -> None:
@@ -204,6 +206,13 @@ class NaseApp(App):
     def action_force_refresh(self) -> None:
         asyncio.create_task(self._run_single_cycle())
 
+    def action_cycle_delay(self) -> None:
+        delays = [5, 15, 30, 60]
+        cur = self._pipeline_data["refresh_delay"]
+        idx = (delays.index(cur) + 1) % len(delays) if cur in delays else 0
+        self._pipeline_data["refresh_delay"] = delays[idx]
+        self.query_one(ControlsBar).refresh()
+
     def action_toggle_help(self) -> None:
         self.push_screen(HelpModal())
 
@@ -270,10 +279,11 @@ class HelpModal(ModalScreen[None]):
             "[bold]NASE Controls[/]\n\n"
             "q       Quit\n"
             "c       Set capital amount\n"
+            "d       Cycle refresh delay (5/15/30/60s)\n"
             "o       Open pair in browser\n"
+            "r       Force refresh\n"
             "s       Change sort column\n"
             "+/-     Adjust min profit threshold ($1)\n"
-            "r       Force refresh\n"
             "h       Show/hide this help\n"
             "Enter   View detail for selected row\n"
             "Press any key to dismiss\n"
