@@ -45,6 +45,9 @@ class ResultFilter:
                     sell_price=o.sell_price,
                     spread_pct=o.spread_pct,
                     net_profit_usd=round(net, 2),
+                    buy_chain=o.buy_chain,
+                    sell_chain=o.sell_chain,
+                    sell_pair_address=o.sell_pair_address,
                     source_apis=o.source_apis,
                     detected_at=o.detected_at,
                 )
@@ -65,20 +68,23 @@ class ResultFilter:
                 existing = seen[key]
                 combined = list(set(existing.source_apis + o.source_apis))
                 if o.spread_pct < existing.spread_pct:
-                    seen[key] = Opportunity(
-                        pair=o.pair,
-                        buy_at_dex=o.buy_at_dex,
-                        sell_at_dex=o.sell_at_dex,
-                        buy_price=o.buy_price,
-                        sell_price=o.sell_price,
-                        spread_pct=o.spread_pct,
-                        net_profit_usd=o.net_profit_usd,
-                        source_apis=combined,
-                        detected_at=min(o.detected_at, existing.detected_at),
-                    )
+                    obj = o
                 else:
-                    seen[key] = existing
-                    seen[key].source_apis = combined
+                    obj = existing
+                seen[key] = Opportunity(
+                    pair=obj.pair,
+                    buy_at_dex=obj.buy_at_dex,
+                    sell_at_dex=obj.sell_at_dex,
+                    buy_price=obj.buy_price,
+                    sell_price=obj.sell_price,
+                    spread_pct=obj.spread_pct,
+                    net_profit_usd=obj.net_profit_usd,
+                    buy_chain=obj.buy_chain,
+                    sell_chain=obj.sell_chain,
+                    sell_pair_address=obj.sell_pair_address,
+                    source_apis=combined,
+                    detected_at=min(o.detected_at, existing.detected_at),
+                )
             else:
                 seen[key] = o
         return list(seen.values())

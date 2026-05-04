@@ -224,8 +224,10 @@ class NaseApp(App):
         idx = table.cursor_row
         if idx < len(self._opportunities):
             o = self._opportunities[idx]
-            url = f"https://dexscreener.com/{o.buy_chain}/{o.pair.pair_address}"
-            webbrowser.open(url)
+            url_buy = f"https://dexscreener.com/{o.buy_chain}/{o.pair.pair_address}"
+            url_sell = f"https://dexscreener.com/{o.sell_chain}/{o.sell_pair_address}"
+            webbrowser.open(url_buy)
+            webbrowser.open(url_sell)
 
 
 class CapitalModal(ModalScreen[float | None]):

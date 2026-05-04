@@ -66,6 +66,7 @@ class Scanner:
             net_profit_usd=round(net, 2),
             buy_chain=buy_chain,
             sell_chain=sell_chain,
+            sell_pair_address=sell.pair.pair_address,
             source_apis=sources,
             detected_at=time.time(),
         )
