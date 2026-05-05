@@ -1,0 +1,137 @@
+refresh_interval_seconds: 5
+
+arb_types:
+  simple: true
+  triangular: false
+  cross_chain: false
+
+filters:
+  min_profit_usd: 5.00
+  max_opportunities: 100
+
+capital:
+  amount_usd: 0.0
+
+chain_gas_estimates:
+  ethereum: 8.00
+  arbitrum: 0.50
+  base: 0.30
+  optimism: 0.30
+  polygon: 0.10
+  bsc: 0.25
+  avalanche: 0.40
+  solana: 0.01
+  zksync: 0.20
+  linea: 0.25
+
+cross_chain_bridge_costs:
+  arbitrum_to_ethereum: 4.00
+  base_to_ethereum: 2.00
+  optimism_to_ethereum: 2.00
+  polygon_to_ethereum: 3.00
+
+sources:
+  dexscreener:
+    enabled: true
+    base_url: "https://api.dexscreener.io"
+    max_rps: 5
+    max_concurrent: 3
+    timeout_seconds: 30
+  dexpaprika:
+    enabled: true
+    base_url: "https://api.dexpaprika.com"
+    max_rps: 10
+    max_concurrent: 5
+    timeout_seconds: 30
+  geckoterminal:
+    enabled: true
+    base_url: "https://api.geckoterminal.com"
+    max_rps: 2
+    max_concurrent: 2
+    timeout_seconds: 30
+  jupiter:
+    enabled: true
+    base_url: "https://lite-api.jup.ag"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 15
+  hyperliquid:
+    enabled: true
+    base_url: "https://api.hyperliquid.xyz"
+    max_rps: 2
+    max_concurrent: 1
+    timeout_seconds: 15
+  hyperswap:
+    enabled: true
+    base_url: "https://api.geckoterminal.com"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 20
+  livecoinwatch:
+    enabled: true
+    base_url: "https://api.livecoinwatch.com"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 30
+  openocean:
+    enabled: true
+    base_url: "https://open-api.openocean.finance"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 20
+  lifi:
+    enabled: true
+    base_url: "https://li.quest/v1"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 20
+  zerox:
+    enabled: true
+    base_url: "https://api.0x.org"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 20
+  oneinch:
+    enabled: true
+    base_url: "https://api.1inch.dev/swap/v6.1"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 20
+  velora:
+    enabled: true
+    base_url: "https://api.paraswap.io"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 20
+  odos:
+    enabled: true
+    base_url: "https://api.odos.xyz"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 20
+  kyberswap:
+    enabled: true
+    base_url: "https://aggregator-api.kyberswap.com"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 20
+  trafficdex:
+    enabled: true
+    base_url: "https://api.geckoterminal.com"
+    max_rps: 1
+    max_concurrent: 1
+    timeout_seconds: 30
+
+chains:
+  - ethereum
+  - arbitrum
+  - base
+  - optimism
+  - polygon
+  - bsc
+  - avalanche
+  - solana
+  - hyperliquid
+  - hyperevm
+  - linea
+  - zksync

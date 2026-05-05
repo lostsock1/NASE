@@ -1,0 +1,18 @@
+[project]
+name = "nase"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp>=3.9",
+    "aiolimiter>=1.1",
+    "textual>=0.80",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+nase = "main:main"
+
+
+[tool.setuptools]
+packages = ["models", "pipeline", "sources", "tui", "util"]

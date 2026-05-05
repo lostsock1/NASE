@@ -1,0 +1,7 @@
+.env
+nase.log
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
