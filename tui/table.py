@@ -1,5 +1,5 @@
 from textual.widgets import DataTable
-from textual.coordinate import Coordinate
+from textual.message import Message
 from decimal import Decimal
 
 from models.types import Opportunity
@@ -12,20 +12,32 @@ class OpportunityTable(DataTable):
     }
     """
 
+    BINDINGS = [
+        ("enter", "request_detail", "Detail"),
+    ]
+
+    class DetailRequested(Message):
+        """Posted when Enter is pressed on a row."""
+        def __init__(self, row_key: str) -> None:
+            self.row_key = row_key
+            super().__init__()
+
     def on_mount(self) -> None:
         self.cursor_type = "row"
         self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "TVL", "Buy $", "Sell $", "Spread", "Profit", "Age")
 
-    def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
-        selected_key: str | None = None
+    def action_request_detail(self) -> None:
         if self.cursor_row is not None and self.row_count > 0:
             try:
-                selected_key = self.ordered_rows[self.cursor_row].value
+                key = self.ordered_rows[self.cursor_row].key
+                self.post_message(self.DetailRequested(key))
             except Exception:
                 pass
 
-        # Remove all current rows in reverse to avoid cursor bounce
-        for key in [r.value for r in reversed(self.ordered_rows)]:
+    def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
+        cursor_idx: int = self.cursor_row if self.row_count > 0 else 0
+
+        for key in [r.key for r in reversed(self.ordered_rows)]:
             self.remove_row(key)
 
         for i, o in enumerate(opportunities, 1):
@@ -48,8 +60,8 @@ class OpportunityTable(DataTable):
                 o.pair.base.symbol,
                 f"{o.pair.base.symbol}/{o.pair.quote.symbol}",
                 src_chain,
-                o.buy_at_dex,
-                o.sell_at_dex,
+                o.buy_at_dex[:20],
+                o.sell_at_dex[:20],
                 rcv_chain,
                 tvl_str,
                 buy_str,
@@ -60,14 +72,9 @@ class OpportunityTable(DataTable):
                 key=o.pair.pair_address,
             )
 
-        if selected_key is not None and self.row_count > 0:
-            for row_idx in range(self.row_count):
-                try:
-                    if self.ordered_rows[row_idx].value == selected_key:
-                        self.cursor_coordinate = Coordinate(0, row_idx)
-                        break
-                except Exception:
-                    pass
+        if self.row_count > 0:
+            target = min(cursor_idx, self.row_count - 1)
+            self.move_cursor(row=target, animate=False)
 
     @staticmethod
     def _spread_style(spread_pct: float, age: float) -> str:

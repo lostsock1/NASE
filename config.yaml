@@ -41,11 +41,11 @@ sources:
     max_rps: 10
     max_concurrent: 5
     timeout_seconds: 30
-  swapapi:
+  livecoinwatch:
     enabled: true
-    base_url: "https://swapapi.io/api/v1"
-    max_rps: 3
-    max_concurrent: 2
+    base_url: "https://api.livecoinwatch.com"
+    max_rps: 1
+    max_concurrent: 1
     timeout_seconds: 30
 
 chains:

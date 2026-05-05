@@ -21,7 +21,7 @@ from pipeline.filter import ResultFilter
 
 from sources.dexscreener import DexScreenerSource
 from sources.dexpaprika import DexPaprikaSource
-from sources.swapapi import SwapApiSource
+from sources.livecoinwatch import LiveCoinWatchClient
 
 from util.config import Config
 
@@ -52,7 +52,6 @@ class NaseApp(App):
         ("o", "open_link", "Open in Browser"),
         ("plus", "increase_threshold", "Increase Threshold"),
         ("minus", "decrease_threshold", "Decrease Threshold"),
-        ("enter", "show_detail", "Show Detail"),
     ]
 
     def __init__(self, config: Config):
@@ -74,11 +73,14 @@ class NaseApp(App):
             "min_profit": config.filters.min_profit_usd,
             "refresh_delay": int(config.refresh_interval_seconds),
             "sort_column": "profit",
+            "reference_rates": {},
         }
         self._opportunities: list = []
         self._all_quotes: list = []
         self._seen_pair_addrs: set[str] = set()
         self._cycle_task: asyncio.Task | None = None
+        self._lcw_client: LiveCoinWatchClient | None = None
+        self._lcw_task: asyncio.Task | None = None
 
     @property
     def pipeline_data(self) -> dict:
@@ -95,12 +97,17 @@ class NaseApp(App):
         self._setup_sources()
         self._pipeline_data["statuses"] = self._collector.source_statuses
         await self._collector.start_all()
+        await self._start_lcw()
         self._cycle_task = asyncio.create_task(self._run_cycles())
 
     async def on_unmount(self) -> None:
         if self._cycle_task:
             self._cycle_task.cancel()
+        if self._lcw_task:
+            self._lcw_task.cancel()
         await self._collector.stop_all()
+        if self._lcw_client:
+            await self._lcw_client.stop()
 
     def _setup_sources(self) -> None:
         import os
@@ -120,13 +127,35 @@ class NaseApp(App):
                     api_key=os.getenv("DEXPAPRIKA_API_KEY"),
                 )
             )
-        if self._config.sources.get("swapapi") and self._config.sources["swapapi"].enabled:
-            self._collector.register(
-                SwapApiSource(
-                    self._config.sources["swapapi"],
-                    os.getenv("SWAPAPI_API_KEY"),
-                )
-            )
+
+    async def _start_lcw(self) -> None:
+        import os
+
+        lcw_cfg = self._config.sources.get("livecoinwatch")
+        if not lcw_cfg or not lcw_cfg.enabled:
+            return
+        api_key = os.getenv("LIVECOINWATCH_API_KEY")
+        if not api_key:
+            logger.warning("LiveCoinWatch: no API key configured")
+            return
+        self._lcw_client = LiveCoinWatchClient(lcw_cfg, api_key)
+        await self._lcw_client.start()
+        self._lcw_task = asyncio.create_task(self._run_lcw_cycles())
+
+    async def _run_lcw_cycles(self) -> None:
+        while self._lcw_client:
+            try:
+                coins = await self._lcw_client.fetch_rates(limit=200)
+                rates = {}
+                for c in coins:
+                    code = c.get("code", "")
+                    rate = c.get("rate")
+                    if code and rate:
+                        rates[code.upper()] = rate
+                self._pipeline_data["reference_rates"] = rates
+            except Exception:
+                pass
+            await asyncio.sleep(60)
 
     async def _run_cycles(self) -> None:
         while True:
@@ -179,26 +208,27 @@ class NaseApp(App):
         idx = cols.index(self._pipeline_data["sort_column"])
         self._pipeline_data["sort_column"] = cols[(idx + 1) % len(cols)]
         if self._opportunities:
-            if self._pipeline_data["sort_column"] == "spread":
+            if self._pipeline_data["sort_column"] == "profit":
+                self._opportunities.sort(key=lambda o: o.net_profit_usd, reverse=True)
+            elif self._pipeline_data["sort_column"] == "spread":
                 self._opportunities.sort(key=lambda o: o.spread_pct, reverse=True)
             elif self._pipeline_data["sort_column"] == "age":
                 self._opportunities.sort(key=lambda o: o.age_seconds)
+            elif self._pipeline_data["sort_column"] == "pair":
+                self._opportunities.sort(key=lambda o: f"{o.pair.base.symbol}/{o.pair.quote.symbol}")
+            use_capital = self._pipeline_data["capital"] > 0
+            self.query_one(OpportunityTable).update_data(self._opportunities, use_capital)
 
-    def action_show_detail(self) -> None:
-        table = self.query_one(OpportunityTable)
+    def on_opportunity_table_detail_requested(self, event: OpportunityTable.DetailRequested) -> None:
+        pair_addr = event.row_key
         detail = self.query_one(DetailPanel)
         detail.hide_panel()
-        if table.cursor_row is None:
-            return
-        try:
-            pair_addr = table.get_row_at(table.cursor_row)[-1]
-            for o in self._opportunities:
-                if o.pair.pair_address == pair_addr:
-                    matching_quotes = [q for q in self._all_quotes if q.pair.pair_address == pair_addr]
-                    detail.show_opportunity(o, matching_quotes, self._pipeline_data["capital"])
-                    return
-        except Exception:
-            pass
+        for o in self._opportunities:
+            if o.pair.pair_address == pair_addr:
+                matching_quotes = [q for q in self._all_quotes if q.pair.pair_address == pair_addr]
+                ref_rates = self._pipeline_data.get("reference_rates", {})
+                detail.show_opportunity(o, matching_quotes, self._pipeline_data["capital"], ref_rates)
+                return
 
     def action_set_capital(self) -> None:
         self.push_screen(CapitalModal())

@@ -8,7 +8,7 @@ class DetailPanel(Vertical):
     DEFAULT_CSS = """
     DetailPanel {
         height: auto;
-        max-height: 12;
+        max-height: 14;
         border: solid $accent;
         padding: 0 1;
         background: $panel;
@@ -19,7 +19,7 @@ class DetailPanel(Vertical):
     }
     """
 
-    def show_opportunity(self, opp, source_quotes: list[PriceQuote], capital: float) -> None:
+    def show_opportunity(self, opp, source_quotes: list[PriceQuote], capital: float, ref_rates: dict | None = None) -> None:
         self.remove_class("hidden")
         self.add_class("visible")
         lines = [f"[bold]Details: {opp.pair.base.symbol}/{opp.pair.quote.symbol} on {opp.pair.chain}[/]"]
@@ -30,7 +30,7 @@ class DetailPanel(Vertical):
                 volume = q.volume_24h_usd
                 liquidity = q.liquidity_usd
         lines.append(
-            f"  [bold]Buy at:[/] {opp.buy_at_dex}    ASK: ${opp.buy_price:,.2f}    "
+            f"  [bold]Buy at:[/] {opp.buy_at_dex[:20]}    ASK: ${opp.buy_price:,.2f}    "
             f"24h Vol: ${volume:,.0f}    Liq: ${liquidity:,.0f}"
         )
         volume2 = 0.0
@@ -40,7 +40,7 @@ class DetailPanel(Vertical):
                 volume2 = q.volume_24h_usd
                 liq2 = q.liquidity_usd
         lines.append(
-            f"  [bold]Sell at:[/] {opp.sell_at_dex}   BID: ${opp.sell_price:,.2f}    "
+            f"  [bold]Sell at:[/] {opp.sell_at_dex[:20]}   BID: ${opp.sell_price:,.2f}    "
             f"24h Vol: ${volume2:,.0f}    Liq: ${liq2:,.0f}"
         )
         gross = opp.sell_price - opp.buy_price
@@ -49,6 +49,18 @@ class DetailPanel(Vertical):
         if capital > 0:
             out = capital * (1 + opp.spread_pct / 100)
             lines.append(f"  Capital ${capital:,.0f} -> Output: ${out:,.2f}")
+
+        if ref_rates:
+            base_ref = ref_rates.get(opp.pair.base.symbol.upper())
+            quote_ref = ref_rates.get(opp.pair.quote.symbol.upper())
+            ref_parts = []
+            if base_ref:
+                ref_parts.append(f"{opp.pair.base.symbol}: ${base_ref:,.2f}")
+            if quote_ref:
+                ref_parts.append(f"{opp.pair.quote.symbol}: ${quote_ref:,.2f}")
+            if ref_parts:
+                lines.append(f"  [dim]LCW Ref: {'  '.join(ref_parts)}[/]")
+
         src_badge = " ".join(f"[{s[:2]}]" for s in sorted(opp.source_apis))
         lines.append(f"  Sources: {src_badge}")
         self.mount(Static("\n".join(lines)))

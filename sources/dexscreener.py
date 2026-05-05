@@ -82,22 +82,18 @@ class DexScreenerSource(Source):
                 if not price_str or price_str in ("", "0", "0.0"):
                     continue
                 price = Decimal(str(price_str))
-                price_change = Decimal(str(p.get("priceChange", {}).get("h24", 0)))
-                spread_estimate = abs(price_change) * price / Decimal("100")
-                ask = price
-                bid = price + spread_estimate
 
                 quote_obj = PriceQuote(
                     pair=pair,
                     dex=p.get("dexId", "unknown"),
                     source_api="dexscreener",
-                    ask_price=ask,
-                    bid_price=bid,
-                    liquidity_usd=float(p.get("liquidity", {}).get("usd", 0) or 0),
-                    volume_24h_usd=float(p.get("volume", {}).get("h24", 0) or 0),
+                    ask_price=price,
+                    bid_price=price,
+                    liquidity_usd=float((p.get("liquidity") or {}).get("usd", 0) or 0),
+                    volume_24h_usd=float((p.get("volume") or {}).get("h24", 0) or 0),
                     fetched_at=now,
                 )
                 quotes.append(quote_obj)
-            except (KeyError, TypeError, DecimalException):
+            except (KeyError, TypeError, DecimalException, AttributeError):
                 continue
         return quotes

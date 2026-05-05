@@ -56,10 +56,11 @@ class Scanner:
             net = (spread_pct / 100.0) * self.config.capital.amount_usd - cost
 
         sources = sorted(set(q.source_api for q in group.quotes))
+        max_liquidity = max((q.liquidity_usd for q in group.quotes), default=0.0)
         return Opportunity(
             pair=buy.pair,
-            buy_at_dex=buy.dex,
-            sell_at_dex=sell.dex,
+            buy_at_dex=buy.dex[:20],
+            sell_at_dex=sell.dex[:20],
             buy_price=buy.ask_price,
             sell_price=sell.bid_price,
             spread_pct=round(spread_pct, 4),
@@ -67,7 +68,7 @@ class Scanner:
             buy_chain=buy_chain,
             sell_chain=sell_chain,
             sell_pair_address=sell.pair.pair_address,
-            liquidity_usd=buy.liquidity_usd,
+            liquidity_usd=max_liquidity,
             source_apis=sources,
             detected_at=time.time(),
         )
