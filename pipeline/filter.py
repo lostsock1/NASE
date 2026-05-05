@@ -49,6 +49,8 @@ class ResultFilter:
                     sell_chain=o.sell_chain,
                     sell_pair_address=o.sell_pair_address,
                     liquidity_usd=o.liquidity_usd,
+                    confidence_score=o.confidence_score,
+                    validation_notes=o.validation_notes,
                     source_apis=o.source_apis,
                     detected_at=o.detected_at,
                 )
@@ -84,6 +86,8 @@ class ResultFilter:
                     sell_chain=obj.sell_chain,
                     sell_pair_address=obj.sell_pair_address,
                     liquidity_usd=obj.liquidity_usd,
+                    confidence_score=max(o.confidence_score, existing.confidence_score),
+                    validation_notes=tuple(sorted(set(o.validation_notes + existing.validation_notes))),
                     source_apis=combined,
                     detected_at=min(o.detected_at, existing.detected_at),
                 )

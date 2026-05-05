@@ -32,7 +32,7 @@ class DexPaprikaSource(Source):
         quotes: list[PriceQuote] = []
         tasks = []
         for chain in self._chains:
-            for page in range(MAX_PAGES_PER_CHAIN):
+            for page in range(1, MAX_PAGES_PER_CHAIN + 1):
                 tasks.append(self._fetch_pools_page(chain, page, POOLS_PER_PAGE))
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -100,8 +100,8 @@ class DexPaprikaSource(Source):
                     dex=p.get("dex_name", p.get("dex_id", "unknown")),
                     source_api="dexpaprika",
                     ask_price=price,
-                    bid_price=price + self._spread_estimate(p),
-                    liquidity_usd=0.0,
+                    bid_price=price,
+                    liquidity_usd=0.0,  # API does not expose per-pool liquidity
                     volume_24h_usd=float(p.get("volume_usd", 0) or 0),
                     fetched_at=now,
                 )
@@ -111,10 +111,3 @@ class DexPaprikaSource(Source):
                 continue
 
         return quotes
-
-    @staticmethod
-    def _spread_estimate(p: dict) -> Decimal:
-        change = p.get("last_price_change_usd_24h")
-        if change is None:
-            return Decimal("0")
-        return abs(Decimal(str(change)))

@@ -21,7 +21,19 @@ from pipeline.filter import ResultFilter
 
 from sources.dexscreener import DexScreenerSource
 from sources.dexpaprika import DexPaprikaSource
-from sources.swapapi import SwapApiSource
+from sources.geckoterminal import GeckoTerminalSource
+from sources.jupiter import JupiterSource
+from sources.hyperliquid import HyperliquidSource
+from sources.hyperswap import HyperSwapSource
+from sources.livecoinwatch import LiveCoinWatchClient
+from sources.openocean import OpenOceanSource
+from sources.lifi import LifiSource
+from sources.zerox import ZeroXSource
+from sources.oneinch import OneInchSource
+from sources.velora import VeloraSource
+from sources.odos import OdosSource
+from sources.kyberswap import KyberSwapSource
+from sources.trafficdex import TrafficDexSource
 
 from util.config import Config
 
@@ -74,11 +86,14 @@ class NaseApp(App):
             "min_profit": config.filters.min_profit_usd,
             "refresh_delay": int(config.refresh_interval_seconds),
             "sort_column": "profit",
+            "reference_rates": {},
         }
         self._opportunities: list = []
         self._all_quotes: list = []
         self._seen_pair_addrs: set[str] = set()
         self._cycle_task: asyncio.Task | None = None
+        self._lcw_client: LiveCoinWatchClient | None = None
+        self._lcw_task: asyncio.Task | None = None
 
     @property
     def pipeline_data(self) -> dict:
@@ -95,12 +110,17 @@ class NaseApp(App):
         self._setup_sources()
         self._pipeline_data["statuses"] = self._collector.source_statuses
         await self._collector.start_all()
+        await self._start_lcw()
         self._cycle_task = asyncio.create_task(self._run_cycles())
 
     async def on_unmount(self) -> None:
         if self._cycle_task:
             self._cycle_task.cancel()
+        if self._lcw_task:
+            self._lcw_task.cancel()
         await self._collector.stop_all()
+        if self._lcw_client:
+            await self._lcw_client.stop()
 
     def _setup_sources(self) -> None:
         import os
@@ -120,13 +140,84 @@ class NaseApp(App):
                     api_key=os.getenv("DEXPAPRIKA_API_KEY"),
                 )
             )
-        if self._config.sources.get("swapapi") and self._config.sources["swapapi"].enabled:
+        if self._config.sources.get("geckoterminal") and self._config.sources["geckoterminal"].enabled:
             self._collector.register(
-                SwapApiSource(
-                    self._config.sources["swapapi"],
-                    os.getenv("SWAPAPI_API_KEY"),
+                GeckoTerminalSource(
+                    self._config.sources["geckoterminal"],
+                    chains=self._config.chains,
+                    api_key=os.getenv("GECKOTERMINAL_API_KEY"),
                 )
             )
+        if self._config.sources.get("jupiter") and self._config.sources["jupiter"].enabled:
+            self._collector.register(
+                JupiterSource(
+                    self._config.sources["jupiter"],
+                    api_key=os.getenv("JUPITER_API_KEY"),
+                )
+            )
+        if self._config.sources.get("hyperliquid") and self._config.sources["hyperliquid"].enabled:
+            self._collector.register(
+                HyperliquidSource(
+                    self._config.sources["hyperliquid"],
+                    api_key=os.getenv("HYPERLIQUID_API_KEY"),
+                )
+            )
+        if self._config.sources.get("hyperswap") and self._config.sources["hyperswap"].enabled:
+            self._collector.register(
+                HyperSwapSource(
+                    self._config.sources["hyperswap"],
+                    api_key=os.getenv("HYPERSWAP_API_KEY"),
+                )
+            )
+        source_specs = [
+            ("openocean", OpenOceanSource, "OPENOCEAN_API_KEY"),
+            ("lifi", LifiSource, "LIFI_API_KEY"),
+            ("zerox", ZeroXSource, "ZEROX_API_KEY"),
+            ("oneinch", OneInchSource, "ONEINCH_API_KEY"),
+            ("velora", VeloraSource, "VELORA_API_KEY"),
+            ("odos", OdosSource, "ODOS_API_KEY"),
+            ("kyberswap", KyberSwapSource, "KYBERSWAP_API_KEY"),
+            ("trafficdex", TrafficDexSource, "GECKOTERMINAL_API_KEY"),
+        ]
+        for source_name, source_cls, env_name in source_specs:
+            source_cfg = self._config.sources.get(source_name)
+            if source_cfg and source_cfg.enabled:
+                self._collector.register(
+                    source_cls(
+                        source_cfg,
+                        chains=self._config.chains,
+                        api_key=os.getenv(env_name),
+                    )
+                )
+
+    async def _start_lcw(self) -> None:
+        import os
+
+        lcw_cfg = self._config.sources.get("livecoinwatch")
+        if not lcw_cfg or not lcw_cfg.enabled:
+            return
+        api_key = os.getenv("LIVECOINWATCH_API_KEY")
+        if not api_key:
+            logger.warning("LiveCoinWatch: no API key configured")
+            return
+        self._lcw_client = LiveCoinWatchClient(lcw_cfg, api_key)
+        await self._lcw_client.start()
+        self._lcw_task = asyncio.create_task(self._run_lcw_cycles())
+
+    async def _run_lcw_cycles(self) -> None:
+        while self._lcw_client:
+            try:
+                coins = await self._lcw_client.fetch_rates(limit=200)
+                rates = {}
+                for c in coins:
+                    code = c.get("code", "")
+                    rate = c.get("rate")
+                    if code and rate:
+                        rates[code.upper()] = rate
+                self._pipeline_data["reference_rates"] = rates
+            except Exception:
+                pass
+            await asyncio.sleep(60)
 
     async def _run_cycles(self) -> None:
         while True:
@@ -179,10 +270,16 @@ class NaseApp(App):
         idx = cols.index(self._pipeline_data["sort_column"])
         self._pipeline_data["sort_column"] = cols[(idx + 1) % len(cols)]
         if self._opportunities:
-            if self._pipeline_data["sort_column"] == "spread":
+            if self._pipeline_data["sort_column"] == "profit":
+                self._opportunities.sort(key=lambda o: o.net_profit_usd, reverse=True)
+            elif self._pipeline_data["sort_column"] == "spread":
                 self._opportunities.sort(key=lambda o: o.spread_pct, reverse=True)
             elif self._pipeline_data["sort_column"] == "age":
                 self._opportunities.sort(key=lambda o: o.age_seconds)
+            elif self._pipeline_data["sort_column"] == "pair":
+                self._opportunities.sort(key=lambda o: f"{o.pair.base.symbol}/{o.pair.quote.symbol}")
+            use_capital = self._pipeline_data["capital"] > 0
+            self.query_one(OpportunityTable).update_data(self._opportunities, use_capital)
 
     def action_show_detail(self) -> None:
         table = self.query_one(OpportunityTable)
@@ -191,11 +288,17 @@ class NaseApp(App):
         if table.cursor_row is None:
             return
         try:
-            pair_addr = table.get_row_at(table.cursor_row)[-1]
+            pair_addr = table.ordered_rows[table.cursor_row].key
             for o in self._opportunities:
                 if o.pair.pair_address == pair_addr:
-                    matching_quotes = [q for q in self._all_quotes if q.pair.pair_address == pair_addr]
-                    detail.show_opportunity(o, matching_quotes, self._pipeline_data["capital"])
+                    matching_quotes = [
+                        q for q in self._all_quotes
+                        if q.pair.chain == o.pair.chain
+                        and q.pair.base.address.lower() == o.pair.base.address.lower()
+                        and q.pair.quote.address.lower() == o.pair.quote.address.lower()
+                    ]
+                    ref_rates = self._pipeline_data.get("reference_rates", {})
+                    detail.show_opportunity(o, matching_quotes, self._pipeline_data["capital"], ref_rates)
                     return
         except Exception:
             pass

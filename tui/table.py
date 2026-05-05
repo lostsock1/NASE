@@ -14,18 +14,18 @@ class OpportunityTable(DataTable):
 
     def on_mount(self) -> None:
         self.cursor_type = "row"
-        self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "TVL", "Buy $", "Sell $", "Spread", "Profit", "Age")
+        self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "TVL", "Buy $", "Sell $", "Spread", "Conf", "Profit", "Age")
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
         selected_key: str | None = None
         if self.cursor_row is not None and self.row_count > 0:
             try:
-                selected_key = self.ordered_rows[self.cursor_row].value
+                selected_key = self.ordered_rows[self.cursor_row].key
             except Exception:
                 pass
 
         # Remove all current rows in reverse to avoid cursor bounce
-        for key in [r.value for r in reversed(self.ordered_rows)]:
+        for key in [r.key for r in reversed(self.ordered_rows)]:
             self.remove_row(key)
 
         for i, o in enumerate(opportunities, 1):
@@ -48,13 +48,14 @@ class OpportunityTable(DataTable):
                 o.pair.base.symbol,
                 f"{o.pair.base.symbol}/{o.pair.quote.symbol}",
                 src_chain,
-                o.buy_at_dex,
-                o.sell_at_dex,
+                o.buy_at_dex[:20],
+                o.sell_at_dex[:20],
                 rcv_chain,
                 tvl_str,
                 buy_str,
                 sell_str,
                 spread_color,
+                self._confidence_style(o.confidence_score),
                 profit,
                 age,
                 key=o.pair.pair_address,
@@ -63,11 +64,19 @@ class OpportunityTable(DataTable):
         if selected_key is not None and self.row_count > 0:
             for row_idx in range(self.row_count):
                 try:
-                    if self.ordered_rows[row_idx].value == selected_key:
+                    if self.ordered_rows[row_idx].key == selected_key:
                         self.cursor_coordinate = Coordinate(0, row_idx)
                         break
                 except Exception:
                     pass
+
+    @staticmethod
+    def _confidence_style(score: int) -> str:
+        if score >= 80:
+            return f"[#22c55e]{score}[/]"
+        if score >= 60:
+            return f"[#eab308]{score}[/]"
+        return f"[#ef4444]{score}[/]"
 
     @staticmethod
     def _spread_style(spread_pct: float, age: float) -> str:

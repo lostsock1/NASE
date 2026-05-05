@@ -24,7 +24,8 @@ class Source(ABC):
 
     @property
     def healthy(self) -> bool:
-        return not self._bucket.status["rate_limited"]
+        status = self._bucket.status
+        return not status["rate_limited"] and not status.get("circuit_open", False)
 
     @property
     def bucket_status(self) -> dict:
@@ -60,7 +61,7 @@ class Source(ABC):
             return []
 
         try:
-            results = await self._fetch_impl()
+            results = await asyncio.wait_for(self._fetch_impl(), timeout=self.config.timeout_seconds)
             logger.info(
                 "Source %s fetched %d pairs",
                 self.name,
@@ -68,6 +69,14 @@ class Source(ABC):
                 extra={"source": self.name, "pairs": len(results)},
             )
             return results
+        except asyncio.TimeoutError:
+            logger.error(
+                "Source %s timed out after %ss",
+                self.name,
+                self.config.timeout_seconds,
+                extra={"source": self.name},
+            )
+            return []
         except RateLimitedError:
             logger.warning(
                 "Source %s 429 backoff %.0fs",

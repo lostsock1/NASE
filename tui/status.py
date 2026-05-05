@@ -32,7 +32,10 @@ class StatusBar(Static):
             elif info.get("rate_limited"):
                 wait = info.get("rate_wait_seconds", 0)
                 c429 = info.get("consecutive_429s", 0)
-                mark = f"[yellow]⏳ {wait:.0f}s ({c429}x429)[/]"
+                if info.get("circuit_open"):
+                    mark = f"[red]CB {wait:.0f}s ({c429}x429)[/]"
+                else:
+                    mark = f"[yellow]wait {wait:.0f}s ({c429}x429)[/]"
             else:
                 mark = "[red]✗[/]"
             parts.append(f"{name} {mark}")

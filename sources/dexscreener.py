@@ -32,23 +32,23 @@ class DexScreenerSource(Source):
                 logger.warning("%s token search failed: %s", self.name, str(result))
         return quotes
 
-    def _get_tokens_to_search(self) -> list[tuple[str, str]]:
+    def _get_tokens_to_search(self) -> list[tuple[dict[str, str], str]]:
         pairs = []
         for chain, tokens in KNOWN_TOKENS.items():
-            for t in tokens:
-                pairs.append((t["symbol"], chain))
+            for token in tokens:
+                pairs.append((token, chain))
         return pairs
 
-    async def _search_token(self, info: tuple[str, str]) -> list[PriceQuote]:
-        symbol, chain = info
-        url = f"{self.config.base_url}/latest/dex/search?q={symbol}"
+    async def _search_token(self, info: tuple[dict[str, str], str]) -> list[PriceQuote]:
+        token, chain = info
+        url = f"{self.config.base_url}/latest/dex/search?q={token['symbol']}"
         try:
             data = await self._get(url)
         except Exception:
             return []
-        return self._normalize(data, chain)
+        return self._normalize(data, chain, token["address"])
 
-    def _normalize(self, raw: dict, chain: str) -> list[PriceQuote]:
+    def _normalize(self, raw: dict, chain: str, target_address: str | None = None) -> list[PriceQuote]:
         quotes: list[PriceQuote] = []
         pairs = raw.get("pairs", [])
         if not isinstance(pairs, list):
@@ -61,19 +61,29 @@ class DexScreenerSource(Source):
                     continue
                 self._seen_pairs.add(pair_addr)
 
+                pair_chain = normalize_chain(p.get("chainId", chain))
+                if pair_chain != chain:
+                    continue
+
                 base_tok = p.get("baseToken", {})
                 quote_tok = p.get("quoteToken", {})
+                base_addr = base_tok.get("address", "")
+                quote_addr = quote_tok.get("address", "")
+                if target_address:
+                    target = target_address.lower()
+                    if base_addr.lower() != target and quote_addr.lower() != target:
+                        continue
 
                 base = Token(
-                    address=base_tok.get("address", ""),
+                    address=base_addr,
                     symbol=base_tok.get("symbol", "???"),
-                    chain=normalize_chain(p.get("chainId", chain)),
+                    chain=pair_chain,
                     decimals=0,
                 )
                 quote = Token(
-                    address=quote_tok.get("address", ""),
+                    address=quote_addr,
                     symbol=quote_tok.get("symbol", "???"),
-                    chain=normalize_chain(p.get("chainId", chain)),
+                    chain=pair_chain,
                     decimals=0,
                 )
                 pair = Pair(base=base, quote=quote, pair_address=pair_addr)
@@ -82,22 +92,18 @@ class DexScreenerSource(Source):
                 if not price_str or price_str in ("", "0", "0.0"):
                     continue
                 price = Decimal(str(price_str))
-                price_change = Decimal(str(p.get("priceChange", {}).get("h24", 0)))
-                spread_estimate = abs(price_change) * price / Decimal("100")
-                ask = price
-                bid = price + spread_estimate
 
                 quote_obj = PriceQuote(
                     pair=pair,
                     dex=p.get("dexId", "unknown"),
                     source_api="dexscreener",
-                    ask_price=ask,
-                    bid_price=bid,
-                    liquidity_usd=float(p.get("liquidity", {}).get("usd", 0) or 0),
-                    volume_24h_usd=float(p.get("volume", {}).get("h24", 0) or 0),
+                    ask_price=price,
+                    bid_price=price,
+                    liquidity_usd=float((p.get("liquidity") or {}).get("usd", 0) or 0),
+                    volume_24h_usd=float((p.get("volume") or {}).get("h24", 0) or 0),
                     fetched_at=now,
                 )
                 quotes.append(quote_obj)
-            except (KeyError, TypeError, DecimalException):
+            except (KeyError, TypeError, DecimalException, AttributeError):
                 continue
         return quotes

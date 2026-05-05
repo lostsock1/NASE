@@ -28,6 +28,16 @@ CHAIN_ALIASES: dict[str, str] = {
     "avalanche c-chain": "avalanche",
     "solana": "solana",
     "sol": "solana",
+    "hyperliquid": "hyperliquid",
+    "hyperliquid spot": "hyperliquid",
+    "hyperevm": "hyperevm",
+    "hyper evm": "hyperevm",
+    "zksync": "zksync",
+    "zk sync": "zksync",
+    "zksync era": "zksync",
+    "324": "zksync",
+    "linea": "linea",
+    "59144": "linea",
 }
 
 
@@ -91,6 +101,16 @@ KNOWN_TOKENS: dict[str, list[dict[str, str]]] = {
         {"address": "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", "symbol": "USDT", "decimals": "6"},
         {"address": "0xd586E7F844cEa2F87f50152665BCbc2C279D8d70", "symbol": "DAI.e", "decimals": "18"},
         {"address": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7", "symbol": "WAVAX", "decimals": "18"},
+    ],
+    "zksync": [
+        {"address": "0x5aea5775959fbc2557cc8789bc1bf90a239d9a91", "symbol": "WETH", "decimals": "18"},
+        {"address": "0x1d17CBcF0D6ce414135B8aA3A6844e5BAdcC5B3", "symbol": "USDC", "decimals": "6"},
+        {"address": "0x493257fD37EDB34451f62eDf8D2a0C418852bA4C", "symbol": "USDT", "decimals": "6"},
+    ],
+    "linea": [
+        {"address": "0xe5D7C2a44FfDDf6b295A15c148167daaAf5CF34f", "symbol": "WETH", "decimals": "18"},
+        {"address": "0x176211869cA2b568f2A7D4EE941E073a821EE1ff", "symbol": "USDC", "decimals": "6"},
+        {"address": "0xA219439258ca9da29E9Cc4cE5596924745e12B93", "symbol": "USDT", "decimals": "6"},
     ],
     "solana": [
         {"address": "So11111111111111111111111111111111111111112", "symbol": "WSOL", "decimals": "9"},
