@@ -64,7 +64,6 @@ class NaseApp(App):
         ("o", "open_link", "Open in Browser"),
         ("plus", "increase_threshold", "Increase Threshold"),
         ("minus", "decrease_threshold", "Decrease Threshold"),
-        ("enter", "show_detail", "Show Detail"),
     ]
 
     def __init__(self, config: Config):
@@ -281,27 +280,21 @@ class NaseApp(App):
             use_capital = self._pipeline_data["capital"] > 0
             self.query_one(OpportunityTable).update_data(self._opportunities, use_capital)
 
-    def action_show_detail(self) -> None:
-        table = self.query_one(OpportunityTable)
+    def on_opportunity_table_detail_requested(self, event: OpportunityTable.DetailRequested) -> None:
+        pair_addr = event.row_key
         detail = self.query_one(DetailPanel)
         detail.hide_panel()
-        if table.cursor_row is None:
-            return
-        try:
-            pair_addr = table.ordered_rows[table.cursor_row].key
-            for o in self._opportunities:
-                if o.pair.pair_address == pair_addr:
-                    matching_quotes = [
-                        q for q in self._all_quotes
-                        if q.pair.chain == o.pair.chain
-                        and q.pair.base.address.lower() == o.pair.base.address.lower()
-                        and q.pair.quote.address.lower() == o.pair.quote.address.lower()
-                    ]
-                    ref_rates = self._pipeline_data.get("reference_rates", {})
-                    detail.show_opportunity(o, matching_quotes, self._pipeline_data["capital"], ref_rates)
-                    return
-        except Exception:
-            pass
+        for o in self._opportunities:
+            if o.pair.pair_address == pair_addr:
+                matching_quotes = [
+                    q for q in self._all_quotes
+                    if q.pair.chain == o.pair.chain
+                    and q.pair.base.address.lower() == o.pair.base.address.lower()
+                    and q.pair.quote.address.lower() == o.pair.quote.address.lower()
+                ]
+                ref_rates = self._pipeline_data.get("reference_rates", {})
+                detail.show_opportunity(o, matching_quotes, self._pipeline_data["capital"], ref_rates)
+                return
 
     def action_set_capital(self) -> None:
         self.push_screen(CapitalModal())

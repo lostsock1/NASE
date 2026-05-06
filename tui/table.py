@@ -1,5 +1,5 @@
 from textual.widgets import DataTable
-from textual.coordinate import Coordinate
+from textual.message import Message
 from decimal import Decimal
 
 from models.types import Opportunity
@@ -12,9 +12,27 @@ class OpportunityTable(DataTable):
     }
     """
 
+    BINDINGS = [
+        ("enter", "request_detail", "Detail"),
+    ]
+
+    class DetailRequested(Message):
+        """Posted when Enter is pressed on a row."""
+        def __init__(self, row_key: str) -> None:
+            self.row_key = row_key
+            super().__init__()
+
     def on_mount(self) -> None:
         self.cursor_type = "row"
         self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "TVL", "Buy $", "Sell $", "Spread", "Conf", "Profit", "Age")
+
+    def action_request_detail(self) -> None:
+        if self.cursor_row is not None and self.row_count > 0:
+            try:
+                key = self.ordered_rows[self.cursor_row].key
+                self.post_message(self.DetailRequested(key))
+            except Exception:
+                pass
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
         selected_key: str | None = None
@@ -23,8 +41,8 @@ class OpportunityTable(DataTable):
                 selected_key = self.ordered_rows[self.cursor_row].key
             except Exception:
                 pass
+        cursor_idx: int = self.cursor_row if self.row_count > 0 else 0
 
-        # Remove all current rows in reverse to avoid cursor bounce
         for key in [r.key for r in reversed(self.ordered_rows)]:
             self.remove_row(key)
 
@@ -65,10 +83,14 @@ class OpportunityTable(DataTable):
             for row_idx in range(self.row_count):
                 try:
                     if self.ordered_rows[row_idx].key == selected_key:
-                        self.cursor_coordinate = Coordinate(0, row_idx)
-                        break
+                        self.move_cursor(row=row_idx, animate=False)
+                        return
                 except Exception:
                     pass
+
+        if self.row_count > 0:
+            target = min(cursor_idx, self.row_count - 1)
+            self.move_cursor(row=target, animate=False)
 
     @staticmethod
     def _confidence_style(score: int) -> str:
