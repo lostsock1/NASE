@@ -1,0 +1,148 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="/mod/nase/arbitrage/arbitrage.css" />
+    <script type="module" src="/mod/nase/arbitrage/store.js"></script>
+  </head>
+  <body>
+    <section class="nase-page" x-data x-init="$store.naseArbitrage.init()">
+      <x-context data-tag="nase-arbitrage"></x-context>
+      <div class="nase-shell">
+        <header class="nase-hero">
+          <div>
+            <p class="nase-kicker">NASE x Space Agent</p>
+            <h1>Arbitrage Operations Workspace</h1>
+            <p>
+              Live source health, executable quote depth, and agent-ready controls powered by
+              the NASE tracker running on this VM.
+            </p>
+          </div>
+          <div class="nase-actions">
+            <button
+              type="button"
+              class="secondary-button"
+              @click="$store.naseArbitrage.openNaseDashboard()"
+            >
+              <x-icon>open_in_new</x-icon>
+              <span>Open NASE</span>
+            </button>
+            <button
+              type="button"
+              class="primary-button"
+              :disabled="$store.naseArbitrage.loading"
+              @click="$store.naseArbitrage.refresh()"
+            >
+              <x-icon x-text="$store.naseArbitrage.loading ? 'hourglass_top' : 'refresh'"></x-icon>
+              <span x-text="$store.naseArbitrage.loading ? 'Refreshing' : 'Refresh'"></span>
+            </button>
+          </div>
+        </header>
+
+        <template x-if="$store.naseArbitrage.error">
+          <div class="nase-alert" x-text="$store.naseArbitrage.error"></div>
+        </template>
+
+        <section class="nase-metrics" aria-label="NASE metrics">
+          <article class="nase-metric">
+            <span>Opportunities</span>
+            <strong x-text="$store.naseArbitrage.formatNumber($store.naseArbitrage.summary.opportunities)"></strong>
+            <small x-text="`best ${$store.naseArbitrage.formatPercent($store.naseArbitrage.summary.best_spread)}`"></small>
+          </article>
+          <article class="nase-metric">
+            <span>Normalized Quotes</span>
+            <strong x-text="$store.naseArbitrage.formatNumber($store.naseArbitrage.summary.normalized_quotes)"></strong>
+            <small x-text="`${$store.naseArbitrage.formatNumber($store.naseArbitrage.summary.raw_quotes)} raw`"></small>
+          </article>
+          <article class="nase-metric">
+            <span>Executable</span>
+            <strong x-text="$store.naseArbitrage.formatNumber($store.naseArbitrage.summary.executable_quotes)"></strong>
+            <small>depth checked</small>
+          </article>
+          <article class="nase-metric">
+            <span>Confidence</span>
+            <strong x-text="$store.naseArbitrage.formatNumber($store.naseArbitrage.summary.median_confidence)"></strong>
+            <small>median score</small>
+          </article>
+        </section>
+
+        <section class="nase-grid">
+          <article class="nase-card nase-opportunities-card">
+            <div class="nase-card-head">
+              <div>
+                <h2>Top Opportunities</h2>
+                <p x-text="$store.naseArbitrage.snapshotAgeLabel"></p>
+              </div>
+              <span class="nase-status" x-text="$store.naseArbitrage.statusLabel"></span>
+            </div>
+            <div class="nase-list">
+              <template x-for="opp in $store.naseArbitrage.topOpportunities" :key="`${opp.pair}:${opp.buy_at}:${opp.sell_at}:${opp.spread_pct}`">
+                <article class="nase-row">
+                  <div>
+                    <strong x-text="opp.pair"></strong>
+                    <span x-text="`${opp.buy_at} -> ${opp.sell_at}`"></span>
+                  </div>
+                  <div>
+                    <strong x-text="$store.naseArbitrage.formatPercent(opp.spread_pct)"></strong>
+                    <span x-text="`conf ${opp.confidence}`"></span>
+                  </div>
+                </article>
+              </template>
+            </div>
+          </article>
+
+          <article class="nase-card">
+            <div class="nase-card-head">
+              <div>
+                <h2>Source Health</h2>
+                <p>Rate limits and circuit breakers from the tracker.</p>
+              </div>
+            </div>
+            <div class="nase-source-grid">
+              <template x-for="source in $store.naseArbitrage.sources" :key="source.name">
+                <div class="nase-source" :class="$store.naseArbitrage.sourceTone(source)">
+                  <strong x-text="source.name"></strong>
+                  <span x-text="$store.naseArbitrage.sourceLabel(source)"></span>
+                </div>
+              </template>
+            </div>
+          </article>
+        </section>
+
+        <section class="nase-card nase-agent-card">
+          <div class="nase-card-head">
+            <div>
+              <h2>Agent Actions</h2>
+              <p>Use the loaded NASE skill to inspect live opportunities from inside Space Agent.</p>
+            </div>
+          </div>
+          <div class="nase-prompt-grid">
+            <button type="button" @click="$store.naseArbitrage.copyPrompt('Load the nase-arbitrage skill and explain the top 5 executable opportunities by confidence and source mix.')">
+              Explain top executable opportunities
+            </button>
+            <button type="button" @click="$store.naseArbitrage.copyPrompt('Load the nase-arbitrage skill and audit which NASE sources are rate limited, unhealthy, or producing zero normalized quotes.')">
+              Audit source health
+            </button>
+            <button type="button" @click="$store.naseArbitrage.copyPrompt('Load the nase-arbitrage skill and compare WETH/USDC executable quotes across Velora, Odos, and KyberSwap.')">
+              Compare executable quotes
+            </button>
+          </div>
+          <p class="nase-copy-status" x-text="$store.naseArbitrage.copyStatus"></p>
+        </section>
+
+        <section class="nase-api-shell">
+          <div class="nase-card-head">
+            <div>
+              <h2>NASE API Surface</h2>
+              <p>Space Agent uses these stable endpoints through its server-side proxy.</p>
+            </div>
+          </div>
+          <div class="nase-endpoint-grid">
+            <code>/api/sources</code>
+            <code>/api/opportunities</code>
+            <code>/api/alerts</code>
+            <code>/api/explain/:id</code>
+          </div>
+        </section>
+      </div>
+    </section>
+  </body>
+</html>

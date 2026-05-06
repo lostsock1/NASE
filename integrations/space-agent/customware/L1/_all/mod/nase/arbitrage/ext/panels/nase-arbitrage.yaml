@@ -1,0 +1,5 @@
+name: NASE Arbitrage
+path: nase/arbitrage
+description: Inspect live arbitrage opportunities, source health, and executable quote depth from NASE.
+icon: monitoring
+color: "#6ee7b7"

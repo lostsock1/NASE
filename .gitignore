@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+integrations/space-agent/customware/L2/
+integrations/space-agent/customware/share/

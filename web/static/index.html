@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NASE Arbitrage Console</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="rail">
+      <div class="brand">
+        <div class="mark">N</div>
+        <div>
+          <strong>NASE</strong>
+          <span>Arbitrage Console</span>
+        </div>
+      </div>
+      <nav class="nav-tabs" aria-label="Views">
+        <button class="tab active" data-view="opportunities">Opportunities</button>
+        <button class="tab" data-view="sources">Sources</button>
+        <button class="tab" data-view="quotes">Quote Audit</button>
+      </nav>
+      <div class="rail-panel">
+        <span class="label">Cycle</span>
+        <strong id="cycle">0</strong>
+      </div>
+      <div class="rail-panel">
+        <span class="label">Updated</span>
+        <strong id="updated">warming up</strong>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <h1>Live Quote Intelligence</h1>
+          <p>Executable-route validation, confidence scoring, and pool sanity filters in one control surface.</p>
+        </div>
+        <div class="actions">
+          <label class="search-wrap">
+            <span>Filter</span>
+            <input id="filter" type="search" placeholder="pair, chain, source" autocomplete="off" />
+          </label>
+          <button id="refresh" class="primary">Refresh</button>
+        </div>
+      </header>
+
+      <section class="metrics" aria-label="System metrics">
+        <div class="metric accent"><span>Opportunities</span><strong id="m-opps">0</strong><small id="m-best">best 0%</small></div>
+        <div class="metric"><span>Normalized Quotes</span><strong id="m-quotes">0</strong><small id="m-raw">0 raw</small></div>
+        <div class="metric"><span>Executable</span><strong id="m-exec">0</strong><small>validated depth</small></div>
+        <div class="metric"><span>Confidence</span><strong id="m-conf">0</strong><small>median score</small></div>
+        <div class="metric"><span>Latency</span><strong id="m-lat">0s</strong><small id="m-state">idle</small></div>
+      </section>
+
+      <section id="opportunities" class="view active-view">
+        <div class="section-head">
+          <h2>Ranked Opportunities</h2>
+          <div id="chain-bars" class="chain-bars"></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Pair</th><th>Route</th><th>Buy</th><th>Sell</th><th>Spread</th><th>TVL</th><th>Conf</th><th>Notes</th></tr>
+            </thead>
+            <tbody id="opps-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="sources" class="view">
+        <div class="section-head"><h2>Source Health</h2><p>Rate limits and circuit breakers are visible here.</p></div>
+        <div id="source-grid" class="source-grid"></div>
+      </section>
+
+      <section id="quotes" class="view">
+        <div class="section-head"><h2>Quote Audit</h2><p>Top confidence quotes after normalization and sanity filters.</p></div>
+        <div class="table-wrap compact">
+          <table>
+            <thead>
+              <tr><th>Pair</th><th>Chain</th><th>Source</th><th>DEX</th><th>Price</th><th>Liquidity</th><th>Exec</th><th>Conf</th></tr>
+            </thead>
+            <tbody id="quotes-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

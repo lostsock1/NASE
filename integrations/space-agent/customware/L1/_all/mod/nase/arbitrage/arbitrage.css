@@ -1,0 +1,265 @@
+.nase-page {
+  min-height: 100%;
+  padding: 28px;
+  color: var(--text-primary, #eef4ff);
+}
+
+.nase-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.nase-hero,
+.nase-card,
+.nase-api-shell {
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(18, 27, 38, .92), rgba(8, 13, 19, .92));
+  box-shadow: 0 20px 70px rgba(0, 0, 0, .25);
+}
+
+.nase-hero {
+  min-height: 220px;
+  padding: 28px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  background:
+    linear-gradient(135deg, rgba(93, 218, 255, .16), transparent 46%),
+    linear-gradient(145deg, rgba(18, 27, 38, .94), rgba(8, 13, 19, .94));
+}
+
+.nase-kicker {
+  margin: 0 0 10px;
+  color: #6ee7b7;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.nase-hero h1,
+.nase-card h2 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.nase-hero h1 {
+  max-width: 720px;
+  font-size: 36px;
+  line-height: 1.08;
+}
+
+.nase-hero p,
+.nase-card p,
+.nase-api-shell p,
+.nase-row span,
+.nase-source span,
+.nase-metric small,
+.nase-metric span {
+  color: rgba(211, 226, 247, .72);
+}
+
+.nase-hero > div:first-child > p:last-child {
+  max-width: 680px;
+  margin: 12px 0 0;
+}
+
+.nase-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.nase-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.nase-metric {
+  min-height: 118px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 10px;
+  background: rgba(10, 17, 25, .8);
+}
+
+.nase-metric strong {
+  display: block;
+  margin: 6px 0 2px;
+  font-size: 34px;
+}
+
+.nase-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
+  gap: 18px;
+}
+
+.nase-card,
+.nase-api-shell {
+  padding: 20px;
+}
+
+.nase-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.nase-status {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(110, 231, 183, .12);
+  color: #6ee7b7;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.nase-list {
+  display: grid;
+  gap: 8px;
+}
+
+.nase-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+}
+
+.nase-row strong,
+.nase-row span {
+  display: block;
+}
+
+.nase-row > div:last-child {
+  text-align: right;
+}
+
+.nase-row > div:last-child strong {
+  color: #6ee7b7;
+}
+
+.nase-source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+}
+
+.nase-source {
+  min-height: 78px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .08);
+}
+
+.nase-source strong,
+.nase-source span {
+  display: block;
+}
+
+.nase-source.is-good strong {
+  color: #6ee7b7;
+}
+
+.nase-source.is-warn strong {
+  color: #f6c85f;
+}
+
+.nase-source.is-bad strong {
+  color: #ff6b6b;
+}
+
+.nase-prompt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.nase-prompt-grid button {
+  min-height: 82px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .05);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nase-copy-status {
+  min-height: 20px;
+  margin: 10px 0 0;
+  color: #6ee7b7;
+}
+
+.nase-alert {
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 107, 107, .35);
+  border-radius: 8px;
+  background: rgba(255, 107, 107, .12);
+  color: #ff9b9b;
+}
+
+.nase-endpoint-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.nase-endpoint-grid code {
+  display: block;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .22);
+  color: #b9dbff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 900px) {
+  .nase-page {
+    padding: 18px;
+  }
+
+  .nase-hero,
+  .nase-card-head {
+    flex-direction: column;
+  }
+
+  .nase-hero h1 {
+    font-size: 30px;
+  }
+
+  .nase-actions,
+  .nase-actions button {
+    width: 100%;
+  }
+
+  .nase-metrics,
+  .nase-grid,
+  .nase-prompt-grid,
+  .nase-endpoint-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nase-row {
+    grid-template-columns: 1fr;
+  }
+
+  .nase-row > div:last-child {
+    text-align: left;
+  }
+}

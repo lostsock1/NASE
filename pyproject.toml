@@ -12,7 +12,8 @@ dependencies = [
 
 [project.scripts]
 nase = "main:main"
+nase-web = "web.server:main"
 
 
 [tool.setuptools]
-packages = ["models", "pipeline", "sources", "tui", "util"]
+packages = ["models", "pipeline", "sources", "tui", "util", "web"]
