@@ -70,15 +70,15 @@ sources:
   openocean:
     enabled: true
     base_url: https://open-api.openocean.finance
-    max_rps: 2
+    max_rps: 0.5
     max_concurrent: 1
-    timeout_seconds: 60
+    timeout_seconds: 45
   lifi:
     enabled: true
     base_url: https://li.quest/v1
-    max_rps: 2
+    max_rps: 0.5
     max_concurrent: 1
-    timeout_seconds: 60
+    timeout_seconds: 45
   zerox:
     enabled: false
     base_url: https://api.0x.org
@@ -100,9 +100,9 @@ sources:
   odos:
     enabled: true
     base_url: https://api.odos.xyz
-    max_rps: 3
+    max_rps: 1
     max_concurrent: 1
-    timeout_seconds: 120
+    timeout_seconds: 45
   kyberswap:
     enabled: true
     base_url: https://aggregator-api.kyberswap.com
@@ -112,9 +112,9 @@ sources:
   trafficdex:
     enabled: true
     base_url: https://api.geckoterminal.com
-    max_rps: 1
+    max_rps: 0.5
     max_concurrent: 1
-    timeout_seconds: 30
+    timeout_seconds: 60
 chains:
 - ethereum
 - arbitrum

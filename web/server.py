@@ -198,6 +198,8 @@ class WebTracker:
                 "circuit_open": bool(info.get("circuit_open")),
                 "wait": round(float(info.get("rate_wait_seconds", 0)), 1),
                 "success_rate": float(info.get("success_rate", 100)),
+                "consecutive_failures": int(info.get("consecutive_failures") or 0),
+                "last_error": info.get("last_error"),
                 "raw": raw_counts.get(name, 0),
                 "normalized": quote_counts.get(name, 0),
                 "executable": executable_counts.get(name, 0),
@@ -286,7 +288,7 @@ class WebTracker:
                     "type": "source_health",
                     "severity": severity,
                     "title": f"{source.get('name')} is constrained",
-                    "detail": f"healthy={source.get('healthy')} rate_limited={source.get('rate_limited')} circuit_open={source.get('circuit_open')} wait={source.get('wait')}s",
+                    "detail": f"healthy={source.get('healthy')} rate_limited={source.get('rate_limited')} circuit_open={source.get('circuit_open')} wait={source.get('wait')}s failures={source.get('consecutive_failures', 0)} last_error={source.get('last_error') or 'none'}",
                     "source": source.get("name"),
                 })
 

@@ -127,6 +127,18 @@ Start conservatively:
 7. Compare `market_exact_in` paper records with optional `limit_hypothesis` records.
 8. Only then consider Live Armed Mode, and only with a separate executor.
 
+## Source Health Tuning
+
+NASE treats source health as an operational signal, not just a UI detail. During longer paper runs, watch `/api/sources` and `/api/alerts` for `rate_limited`, `circuit_open`, `rate_wait_seconds`, `total_429s`, and executable quote coverage.
+
+The default config intentionally keeps public providers conservative:
+
+- OpenOcean and LI.FI are broad aggregators and may return long `Retry-After` windows. Their defaults are paced at `0.5` requests per second with 45 second timeouts.
+- Odos can be slow on complex routes. Its timeout is capped at 45 seconds so one source cannot stall full collection cycles for two minutes.
+- TrafficDex uses public GeckoTerminal-style traffic data across multiple chains and can emit repeated HTTP 429 responses with `Retry-After: 0`. Its default is paced at `0.5` requests per second with a 60 second timeout so the multi-chain fetch can finish without hammering the API.
+
+If a provider is still constrained, lower its `sources.<name>.max_rps` before raising timeouts. Higher timeouts can make a run look quieter while actually reducing fresh executable coverage.
+
 ## Docker Quick Start
 
 From the repo root:
