@@ -155,6 +155,13 @@ Implemented modules:
 
 Paper Armed Mode simulates only when the explained opportunity has executable buy and sell leg quotes. It rejects pool-only candidates.
 
+Paper execution is configurable separately from live execution:
+
+- `market_exact_in` is the default paper strategy. It means the paper record was replayed against executable market-style quote-depth legs for a concrete notional, so it was plausible at quote time.
+- `limit_hypothesis` models a limit-order strategy but records a warning because paper mode cannot know whether the limit order would have filled.
+
+Ticker, pool midpoint, or last-trade prices are discovery inputs only. They do not count as paper-trade execution evidence. Paper records expose `execution_evidence`, `reference_price_kind`, `fill_certainty`, and `uses_last_trade_price` for later review.
+
 It simulates:
 
 - budget allocation
@@ -190,6 +197,12 @@ The workspace can mark ledger rows as win, loss, or skipped. A future executor c
 ## Live Armed Mode Boundary
 
 Live Armed Mode must not live in browser customware. The current implementation only creates guarded trade-intent drafts.
+
+Live execution is configurable independently:
+
+- `limit_only`: default, executor must use limit-style execution and reject market fills.
+- `hybrid`: executor tries limit-style execution first and may use a market exact-in fallback only after fresh quotes and simulation still clear policy.
+- `market_exact_in`: executor may use market exact-in execution, with quote TTL, slippage, simulation, budget, allowlist, confirmation, and kill-switch checks.
 
 Space Agent may create a trade intent. A separate executor must own:
 

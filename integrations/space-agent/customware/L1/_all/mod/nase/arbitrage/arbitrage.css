@@ -208,7 +208,8 @@
   text-transform: uppercase;
 }
 
-.nase-policy-grid input {
+.nase-policy-grid input,
+.nase-policy-grid select {
   width: 100%;
   min-height: 38px;
   border: 1px solid rgba(255, 255, 255, .12);
@@ -216,6 +217,10 @@
   background: rgba(0, 0, 0, .22);
   color: inherit;
   padding: 8px 10px;
+}
+
+.nase-policy-grid select {
+  appearance: none;
 }
 
 .nase-ledger-stats {

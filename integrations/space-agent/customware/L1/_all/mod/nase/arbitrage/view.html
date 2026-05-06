@@ -116,6 +116,33 @@
               <span>Max Age s</span>
               <input type="number" min="0" step="5" x-model.number="$store.naseArbitrage.policy.maxAgeSeconds" @change="$store.naseArbitrage.updatePolicy()" />
             </label>
+            <label>
+              <span>Paper Exec</span>
+              <select x-model="$store.naseArbitrage.policy.paperExecutionStyle" @change="$store.naseArbitrage.updatePolicy()">
+                <option value="market_exact_in">Market replay</option>
+                <option value="limit_hypothesis">Limit hypothesis</option>
+              </select>
+            </label>
+            <label>
+              <span>Live Exec</span>
+              <select x-model="$store.naseArbitrage.policy.liveExecutionStyle" @change="$store.naseArbitrage.updatePolicy()">
+                <option value="limit_only">Limit only</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="market_exact_in">Market exact-in</option>
+              </select>
+            </label>
+            <label>
+              <span>Live Slip bps</span>
+              <input type="number" min="0" step="1" x-model.number="$store.naseArbitrage.policy.maxLiveSlippageBps" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+            <label>
+              <span>Quote TTL s</span>
+              <input type="number" min="1" step="1" x-model.number="$store.naseArbitrage.policy.quoteTtlSeconds" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+            <label>
+              <span>Confirm $</span>
+              <input type="number" min="0" step="25" x-model.number="$store.naseArbitrage.policy.humanConfirmUsd" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
           </div>
         </section>
 
@@ -206,6 +233,7 @@
                   <div>
                     <strong x-text="entry.pair"></strong>
                     <span x-text="entry.route"></span>
+                    <small x-text="`${entry.paper_execution_style || 'market_exact_in'} / ${entry.fill_certainty || 'checked'}`"></small>
                   </div>
                   <div>
                     <strong x-text="$store.naseArbitrage.formatMoney(entry.estimated_net_usd)"></strong>
@@ -229,11 +257,11 @@
               <article class="nase-row">
                 <div>
                   <strong x-text="intent.pair"></strong>
-                  <span x-text="intent.status"></span>
+                  <span x-text="`${intent.status} / ${intent.execution_style || 'limit_only'}`"></span>
                 </div>
                 <div>
                   <strong x-text="$store.naseArbitrage.formatMoney(intent.paper.estimated_net_usd)"></strong>
-                  <span x-text="intent.requires_executor ? 'executor required' : 'blocked'"></span>
+                  <span x-text="intent.human_confirmation_required ? 'confirm required' : (intent.requires_executor ? 'executor required' : 'blocked')"></span>
                 </div>
               </article>
             </template>

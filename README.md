@@ -50,6 +50,14 @@ It shows:
 
 The frontend escapes quote, source, DEX, and route strings before rendering. This matters because external market data can contain arbitrary token symbols or venue labels.
 
+## Operator Guide
+
+For the practical workflow, strategy toggles, and the difference between discovery prices, executable quote depth, paper-market replay, paper-limit hypotheses, and live trade intents, see:
+
+```text
+docs/operator-guide.md
+```
+
 ## Running Locally
 
 Create and install an environment:
@@ -325,6 +333,13 @@ This is where thresholds should be tuned before real funds are exposed.
 
 Paper Armed Mode is implemented as simulation only and must use executable leg quotes. It will reject a candidate if `/api/explain/:id` does not contain both an executable buy leg and an executable sell leg.
 
+Paper execution has its own strategy setting:
+
+- `market_exact_in` is the default because it is the closest paper model to reality. It replays the opportunity against executable quote-depth legs for a concrete notional and records that the trade was quote-time executable. This is still not a guaranteed fill because latency, MEV, slippage, transaction reverts, and stale quotes can invalidate the trade before submission.
+- `limit_hypothesis` is available for comparing a limit-order strategy, but it is explicitly marked as hypothetical. Paper mode can model the target price, but it cannot prove the order would have been filled because no order was actually placed in the book or limit-order protocol.
+
+Ticker, pool midpoint, or last-trade style prices are allowed to help discover candidates, but they are not accepted as paper-trade execution evidence. Paper records now include `execution_evidence`, `reference_price_kind`, `fill_certainty`, and `uses_last_trade_price` so later analysis can distinguish a quote-time executable replay from a weaker historical/reference signal.
+
 It estimates from the executable leg prices, not from the scanner spread:
 
 - gross edge from spread and budget
@@ -358,7 +373,15 @@ Required guardrails:
 
 Space Agent must not hold private keys in the browser. NASE should not sign transactions. A separate executor should own signing, budget enforcement, and on-chain submission.
 
-In this repository, Live Armed Mode is intentionally limited to a trade-intent draft. The draft contains guardrails, budget, paper estimate, and blocked reasons. It never contains private keys and always marks `requires_executor: true`.
+In this repository, Live Armed Mode is intentionally limited to a trade-intent draft. The draft contains guardrails, budget, paper estimate, blocked reasons, and an explicit execution plan. It never contains private keys and always marks `requires_executor: true`.
+
+The intent draft is configurable by live execution style:
+
+- `limit_only` is the default. It tells the executor to use limit-style execution only, with a bounded buy price and bounded sell price derived from the fresh executable leg prices plus the configured `limitBufferBps`.
+- `hybrid` tells the executor to try limit execution first and only consider a market exact-in fallback when a fresh quote and transaction simulation still clear all thresholds.
+- `market_exact_in` allows market-style exact-in execution, but only inside the executor. It still requires fresh executable quotes, quote TTL enforcement, transaction simulation, max live slippage, min net edge, budget limits, allowlists, and the kill switch.
+
+This keeps the risky part out of Space Agent. Space Agent decides, explains, and drafts intent. The executor re-quotes, simulates, signs, and submits, or rejects the intent.
 
 ### Trade Ledger
 

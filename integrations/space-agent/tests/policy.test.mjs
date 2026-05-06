@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 
 import {
+  EXECUTION_STYLES,
+  PAPER_EXECUTION_STYLES,
   createTradeIntentDraft,
   evaluateOpportunity,
   normalizePolicy,
@@ -48,6 +50,13 @@ const policy = normalizePolicy({
   chainGasUsd: { arbitrum: 0.05 },
 });
 
+assert.deepEqual(EXECUTION_STYLES, ["limit_only", "hybrid", "market_exact_in"]);
+assert.deepEqual(PAPER_EXECUTION_STYLES, ["market_exact_in", "limit_hypothesis"]);
+assert.equal(normalizePolicy({ executionStyle: "market_exact_in" }).executionStyle, "market_exact_in");
+assert.equal(normalizePolicy({ liveExecutionStyle: "hybrid" }).liveExecutionStyle, "hybrid");
+assert.equal(normalizePolicy({ paperExecutionStyle: "limit_hypothesis" }).paperExecutionStyle, "limit_hypothesis");
+assert.equal(normalizePolicy({ executionStyle: "unsupported" }).executionStyle, "limit_only");
+
 const evaluation = evaluateOpportunity(strongPayload, { alerts: [] }, policy);
 assert.equal(evaluation.status, "actionable");
 assert.equal(evaluation.notify, true);
@@ -78,6 +87,20 @@ assert.equal(paper.budget_usd, 250);
 assert.equal(paper.executable_buy_price, 2500);
 assert.equal(paper.executable_sell_price, 2515.5);
 assert.equal(paper.scanner_spread_pct, 0.62);
+assert.equal(paper.paper_execution_style, "market_exact_in");
+assert.equal(paper.execution_assumption, "market_exact_in_replay");
+assert.equal(paper.fill_certainty, "quote_time_executable");
+assert.equal(paper.execution_evidence, "executable_quote_depth");
+assert.equal(paper.reference_price_kind, "executable_quote_depth");
+assert.equal(paper.uses_last_trade_price, false);
+assert.match(paper.execution_warning, /latency/);
+
+const limitPaper = simulatePaperTrade(strongPayload, { alerts: [], evaluation }, { ...policy, paperExecutionStyle: "limit_hypothesis" });
+assert.equal(limitPaper.status, "paper_candidate");
+assert.equal(limitPaper.paper_execution_style, "limit_hypothesis");
+assert.equal(limitPaper.execution_assumption, "limit_fill_hypothesis");
+assert.equal(limitPaper.fill_certainty, "hypothetical");
+assert.match(limitPaper.execution_warning, /cannot know/);
 
 const poolOnlyPaper = simulatePaperTrade(
   { ...strongPayload, analysis: { ...strongPayload.analysis, executable_legs: { complete: false } } },
@@ -87,11 +110,56 @@ const poolOnlyPaper = simulatePaperTrade(
 assert.equal(poolOnlyPaper.status, "paper_reject");
 assert.ok(poolOnlyPaper.reasons.includes("paper mode requires executable buy and sell legs"));
 
+const lastTradeLikePaper = simulatePaperTrade(
+  {
+    ...strongPayload,
+    related_quotes: [
+      { id: "buy-last", dex: "Velora", price: "2500", executable: false },
+      { id: "sell-last", dex: "Odos", price: "2515.5", executable: false },
+    ],
+    analysis: {
+      ...strongPayload.analysis,
+      executable_related_quotes: 0,
+      executable_legs: {
+        complete: true,
+        buy_quote: { id: "buy-last", dex: "Velora", price: "2500", executable: false },
+        sell_quote: { id: "sell-last", dex: "Odos", price: "2515.5", executable: false },
+        spread_pct: 0.62,
+        max_notional_usd: 0,
+      },
+    },
+  },
+  { alerts: [] },
+  policy,
+);
+assert.equal(lastTradeLikePaper.status, "paper_reject");
+assert.equal(lastTradeLikePaper.execution_evidence, "non_executable_reference");
+assert.ok(lastTradeLikePaper.reasons.includes("paper mode requires executable buy and sell legs"));
+
 const intent = createTradeIntentDraft(strongPayload, { evaluation, paper }, policy);
 assert.equal(intent.status, "intent_requires_executor");
 assert.equal(intent.requires_executor, true);
 assert.equal(intent.contains_private_key, false);
 assert.equal(intent.signing_allowed_here, false);
+assert.equal(intent.execution_style, "limit_only");
+assert.equal(intent.live_execution_style, "limit_only");
+assert.equal(intent.paper_execution_style, "market_exact_in");
+assert.equal(intent.executor_requirements.market_order_allowed, false);
+assert.equal(intent.executor_requirements.limit_order_required, true);
+assert.equal(intent.order_plan.legs[0].order_type, "limit");
+assert.equal(intent.order_plan.legs[0].max_price, 2500.5);
+assert.equal(intent.order_plan.legs[1].min_price, 2514.9969);
+
+const marketIntent = createTradeIntentDraft(strongPayload, { evaluation, paper }, { ...policy, liveExecutionStyle: "market_exact_in", maxLiveSlippageBps: 5 });
+assert.equal(marketIntent.execution_style, "market_exact_in");
+assert.equal(marketIntent.executor_requirements.market_order_allowed, true);
+assert.equal(marketIntent.executor_requirements.limit_order_required, false);
+assert.equal(marketIntent.order_plan.legs[0].order_type, "market_exact_in");
+assert.equal(marketIntent.order_plan.legs[0].max_slippage_bps, 5);
+
+const hybridIntent = createTradeIntentDraft(strongPayload, { evaluation, paper }, { ...policy, liveExecutionStyle: "hybrid" });
+assert.equal(hybridIntent.order_plan.fallback_market_allowed, true);
+assert.equal(hybridIntent.order_plan.legs[0].fallback_order_type, "market_exact_in");
 
 const weakPaper = simulatePaperTrade(strongPayload, { alerts: [], evaluation }, { ...policy, minNetEdgeUsd: 999 });
 assert.equal(weakPaper.status, "paper_reject");

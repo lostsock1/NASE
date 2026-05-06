@@ -101,10 +101,25 @@ assert.equal(scout.signals[0].id, "good-1");
 const paper = await nase.paperTradeTop(policy);
 assert.equal(paper.entries.length, 1);
 assert.equal(paper.entries[0].status, "paper_candidate");
+assert.equal(paper.entries[0].paper_execution_style, "market_exact_in");
+assert.equal(paper.entries[0].fill_certainty, "quote_time_executable");
+assert.equal(paper.entries[0].execution_evidence, "executable_quote_depth");
+assert.equal(paper.entries[0].uses_last_trade_price, false);
 
 const intent = await nase.tradeIntentFor("good-1", policy);
 assert.equal(intent.status, "intent_requires_executor");
 assert.equal(intent.contains_private_key, false);
 assert.equal(intent.requires_executor, true);
+assert.equal(intent.execution_style, "limit_only");
+assert.equal(intent.live_execution_style, "limit_only");
+assert.equal(intent.paper_execution_style, "market_exact_in");
+assert.equal(intent.executor_requirements.require_fresh_quote, true);
+assert.equal(intent.order_plan.market_order_allowed, false);
+
+const marketIntent = await nase.tradeIntentFor("good-1", { ...policy, liveExecutionStyle: "market_exact_in", maxLiveSlippageBps: 4 });
+assert.equal(marketIntent.execution_style, "market_exact_in");
+assert.equal(marketIntent.order_plan.market_order_allowed, true);
+assert.equal(marketIntent.order_plan.legs[0].order_type, "market_exact_in");
+assert.equal(marketIntent.order_plan.legs[0].max_slippage_bps, 4);
 
 console.log("helper.test.mjs passed");

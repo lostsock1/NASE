@@ -36,7 +36,8 @@ Rules:
 - When judging quote reliability, cite `confidence`, `executable`, `notes`, source mix, and source health.
 - Mention provider backoff explicitly when OpenOcean, LI.FI, or trafficdex are rate-limited.
 - Do not claim an opportunity is executable unless its quote has `executable: true` or `exec_depth` in notes.
+- Treat ticker, pool midpoint, or last-trade prices as discovery signals only, not paper-trade execution evidence.
 - Treat `scoutOnce()` actionable signals as notification candidates, not guaranteed profit.
-- Treat `paperTradeTop()` entries as simulated journal records, not fills.
+- Treat `paperTradeTop()` entries as simulated journal records, not fills; market paper records are quote-time executable replays, while limit paper records are fill hypotheses.
 - Treat `tradeIntentFor()` as a draft that requires a separate executor; it never signs and never contains private keys.
 - For dashboard navigation, use `nase.dashboardUrl`.
