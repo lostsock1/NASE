@@ -77,6 +77,36 @@ Open:
 http://127.0.0.1:8787
 ```
 
+## Running With Docker
+
+The repo includes a Docker Compose setup for starting NASE and Space Agent together.
+
+```bash
+docker compose up --build
+```
+
+Open:
+
+```text
+http://127.0.0.1:8787
+http://127.0.0.1:8788/enter?next=%2F%23%2Fnase%2Farbitrage
+```
+
+The compose stack runs:
+
+- `nase-web`: the NASE web/API service.
+- `space-agent`: Space Agent with the NASE customware mounted through `CUSTOMWARE_PATH`.
+
+Docker-specific behavior:
+
+- `.env` is used as a local runtime env file but is excluded from the image by `.dockerignore`.
+- The Space Agent browser helper normally points at `http://127.0.0.1:8787`; Compose overrides `config.js` so Space Agent proxies to `http://nase-web:8787` inside the Docker network.
+- Published ports can be changed without editing files:
+
+```bash
+NASE_WEB_PORT_PUBLISHED=18877 SPACE_AGENT_PORT_PUBLISHED=18878 docker compose up --build
+```
+
 ## Configuration
 
 The main runtime config is `config.yaml`. Secrets are loaded from `.env`.
@@ -293,7 +323,9 @@ Space Agent keeps a simulated budget and writes a trade journal:
 
 This is where thresholds should be tuned before real funds are exposed.
 
-Paper Armed Mode is implemented as simulation only. It estimates:
+Paper Armed Mode is implemented as simulation only and must use executable leg quotes. It will reject a candidate if `/api/explain/:id` does not contain both an executable buy leg and an executable sell leg.
+
+It estimates from the executable leg prices, not from the scanner spread:
 
 - gross edge from spread and budget
 - DEX fees on both sides
@@ -301,6 +333,7 @@ Paper Armed Mode is implemented as simulation only. It estimates:
 - chain gas on both sides
 - latency haircut
 - confidence haircut
+- max tradable budget from the executable leg notionals
 
 The output is written into the Space Agent paper journal and the trade ledger.
 

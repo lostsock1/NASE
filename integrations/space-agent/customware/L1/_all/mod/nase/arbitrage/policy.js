@@ -4,6 +4,7 @@ export const DEFAULT_SCOUT_POLICY = Object.freeze({
   minNetEdgeUsd: 1,
   maxAgeSeconds: 120,
   requireExecutableRelated: true,
+  requireExecutableLegs: true,
   blockCriticalSources: true,
   maxExplain: 12,
   paperBudgetUsd: 500,
@@ -60,6 +61,7 @@ export function normalizePolicy(policy = {}) {
   merged.maxBudgetPerTradeUsd = Math.max(0, merged.maxBudgetPerTradeUsd);
   merged.maxDailyBudgetUsd = Math.max(0, merged.maxDailyBudgetUsd);
   merged.requireExecutableRelated = Boolean(merged.requireExecutableRelated);
+  merged.requireExecutableLegs = Boolean(merged.requireExecutableLegs);
   merged.blockCriticalSources = Boolean(merged.blockCriticalSources);
   return merged;
 }
@@ -85,6 +87,7 @@ export function evaluateOpportunity(explainPayload, context = {}, policy = {}) {
     analysis.executable_related_quotes,
     relatedQuotes.filter((quoteItem) => quoteItem.executable).length,
   );
+  const executableLegs = resolveExecutableLegs(explainPayload);
   const sourceAlerts = (context.alerts || [])
     .filter((alert) => alert?.type === "source_health" && alert?.severity === "critical")
     .map((alert) => String(alert.source || "").toLowerCase());
@@ -97,6 +100,7 @@ export function evaluateOpportunity(explainPayload, context = {}, policy = {}) {
   if (spreadPct < safePolicy.minSpreadPct) hardBlocks.push(`spread ${spreadPct.toFixed(3)}% < ${safePolicy.minSpreadPct}%`);
   if (safePolicy.maxAgeSeconds > 0 && ageSeconds > safePolicy.maxAgeSeconds) hardBlocks.push(`quote age ${ageSeconds.toFixed(0)}s > ${safePolicy.maxAgeSeconds}s`);
   if (safePolicy.requireExecutableRelated && executableRelatedQuotes < 1) hardBlocks.push("no executable related quote");
+  if (safePolicy.requireExecutableLegs && !executableLegs.complete) hardBlocks.push("missing executable buy/sell leg quote");
   if (safePolicy.chainAllowlist.length && !chains.some((chain) => safePolicy.chainAllowlist.includes(chain))) hardBlocks.push("chain outside allowlist");
   if (safePolicy.tokenAllowlist.length && ![base, quote].some((token) => safePolicy.tokenAllowlist.includes(token))) hardBlocks.push("token outside allowlist");
   if (safePolicy.tokenDenylist.some((token) => [base, quote].includes(token))) hardBlocks.push("token denylisted");
@@ -137,6 +141,7 @@ export function evaluateOpportunity(explainPayload, context = {}, policy = {}) {
     confidence,
     age_seconds: ageSeconds,
     executable_related_quotes: executableRelatedQuotes,
+    executable_legs: executableLegs,
     sources: opportunity.sources || [],
     status,
     score,
@@ -161,16 +166,18 @@ export function rankScoutSignals(signals) {
 export function simulatePaperTrade(explainPayload, context = {}, policy = {}) {
   const safePolicy = normalizePolicy(policy);
   const evaluation = context.evaluation || evaluateOpportunity(explainPayload, context, safePolicy);
-  const opportunity = evaluation.opportunity || explainPayload?.opportunity || {};
+  const executableLegs = evaluation.executable_legs || resolveExecutableLegs(explainPayload);
   const budgetUsd = Math.min(safePolicy.paperBudgetUsd, safePolicy.maxBudgetPerTradeUsd || safePolicy.paperBudgetUsd);
-  const grossEdgeUsd = budgetUsd * (evaluation.spread_pct / 100);
-  const dexFeeUsd = budgetUsd * ((safePolicy.dexFeeBps * 2) / 10000);
-  const slippageUsd = budgetUsd * ((safePolicy.slippageBps * 2) / 10000);
+  const executableSpreadPct = finiteNumber(executableLegs.spread_pct, 0);
+  const tradableBudgetUsd = executableLegs.max_notional_usd > 0 ? Math.min(budgetUsd, executableLegs.max_notional_usd) : budgetUsd;
+  const grossEdgeUsd = tradableBudgetUsd * (executableSpreadPct / 100);
+  const dexFeeUsd = tradableBudgetUsd * ((safePolicy.dexFeeBps * 2) / 10000);
+  const slippageUsd = tradableBudgetUsd * ((safePolicy.slippageBps * 2) / 10000);
   const gasUsd = gasFor(evaluation.buy_chain || evaluation.chain, safePolicy) + gasFor(evaluation.sell_chain || evaluation.chain, safePolicy);
   const latencyHaircutUsd = grossEdgeUsd * (safePolicy.latencyHaircutBps / 10000);
   const confidenceHaircutUsd = grossEdgeUsd * ((100 - evaluation.confidence) / 100) * safePolicy.confidenceHaircutPct;
   const estimatedNetUsd = grossEdgeUsd - dexFeeUsd - slippageUsd - gasUsd - latencyHaircutUsd - confidenceHaircutUsd;
-  const blocked = evaluation.status === "blocked" || estimatedNetUsd < safePolicy.minNetEdgeUsd;
+  const blocked = evaluation.status === "blocked" || !executableLegs.complete || executableSpreadPct <= 0 || estimatedNetUsd < safePolicy.minNetEdgeUsd;
 
   return {
     id: stableId("paper", evaluation.id, Date.now()),
@@ -178,7 +185,12 @@ export function simulatePaperTrade(explainPayload, context = {}, policy = {}) {
     pair: evaluation.pair,
     route: `${evaluation.buy_at || "buy"} -> ${evaluation.sell_at || "sell"}`,
     status: blocked ? "paper_reject" : "paper_candidate",
-    budget_usd: round2(budgetUsd),
+    budget_usd: round2(tradableBudgetUsd),
+    requested_budget_usd: round2(budgetUsd),
+    max_notional_usd: round2(executableLegs.max_notional_usd),
+    executable_buy_price: numberOrNull(executableLegs.buy_quote?.price),
+    executable_sell_price: numberOrNull(executableLegs.sell_quote?.price),
+    executable_spread_pct: round6(executableSpreadPct),
     gross_edge_usd: round2(grossEdgeUsd),
     dex_fee_usd: round2(dexFeeUsd),
     slippage_usd: round2(slippageUsd),
@@ -187,10 +199,12 @@ export function simulatePaperTrade(explainPayload, context = {}, policy = {}) {
     confidence_haircut_usd: round2(confidenceHaircutUsd),
     estimated_net_usd: round2(estimatedNetUsd),
     confidence: evaluation.confidence,
-    spread_pct: evaluation.spread_pct,
-    reasons: blocked ? [...evaluation.hard_blocks, `net edge ${round2(estimatedNetUsd)} < ${safePolicy.minNetEdgeUsd}`].filter(Boolean) : [],
+    spread_pct: executableSpreadPct,
+    scanner_spread_pct: evaluation.spread_pct,
+    reasons: blocked ? [...evaluation.hard_blocks, executableLegs.complete ? "" : "paper mode requires executable buy and sell legs", executableSpreadPct > 0 ? "" : "non-positive executable spread", `net edge ${round2(estimatedNetUsd)} < ${safePolicy.minNetEdgeUsd}`].filter(Boolean) : [],
     created_at: new Date().toISOString(),
-    opportunity,
+    opportunity: evaluation.opportunity,
+    executable_legs: executableLegs,
   };
 }
 
@@ -259,4 +273,68 @@ function round2(value) {
 
 function unique(items) {
   return [...new Set(items.filter(Boolean))];
+}
+
+export function resolveExecutableLegs(explainPayload) {
+  const opportunity = explainPayload?.opportunity || explainPayload || {};
+  const analysisLegs = explainPayload?.analysis?.executable_legs;
+  if (analysisLegs?.complete || analysisLegs?.buy_quote || analysisLegs?.sell_quote) {
+    return normalizeLegs(analysisLegs);
+  }
+  const relatedQuotes = explainPayload?.related_quotes || [];
+  const executable = relatedQuotes.filter((quote) => quote?.executable);
+  const buyQuote = matchExecutableQuote(executable, opportunity.buy_at, true);
+  const sellQuote = matchExecutableQuote(executable, opportunity.sell_at, false);
+  return normalizeLegs({
+    complete: Boolean(buyQuote && sellQuote && buyQuote.id !== sellQuote.id),
+    buy_quote: buyQuote,
+    sell_quote: sellQuote,
+    source: "related_quotes",
+  });
+}
+
+function normalizeLegs(legs = {}) {
+  const buyQuote = legs.buy_quote || null;
+  const sellQuote = legs.sell_quote || null;
+  const buyPrice = numberOrNull(buyQuote?.price);
+  const sellPrice = numberOrNull(sellQuote?.price);
+  const complete = Boolean(legs.complete && buyQuote && sellQuote && buyPrice && sellPrice);
+  const spreadPct = complete ? ((sellPrice - buyPrice) / buyPrice) * 100 : 0;
+  const maxNotional = finitePositiveMin(buyQuote?.notional_usd, sellQuote?.notional_usd);
+  return {
+    complete,
+    buy_quote: buyQuote,
+    sell_quote: sellQuote,
+    spread_pct: round6(finiteNumber(legs.spread_pct, spreadPct)),
+    max_notional_usd: finiteNumber(legs.max_notional_usd, maxNotional),
+    source: legs.source || "unknown",
+  };
+}
+
+function matchExecutableQuote(quotes, target, preferLow) {
+  if (!quotes.length) return null;
+  const targetNorm = String(target || "").toLowerCase();
+  const matched = quotes.filter((quote) => {
+    const dex = String(quote.dex || "").toLowerCase();
+    return targetNorm && (dex.startsWith(targetNorm) || targetNorm.startsWith(dex));
+  });
+  const candidates = matched.length ? matched : quotes;
+  return [...candidates].sort((a, b) => {
+    const delta = finiteNumber(a.price, 0) - finiteNumber(b.price, 0);
+    return preferLow ? delta : -delta;
+  })[0] || null;
+}
+
+function finitePositiveMin(...values) {
+  const positives = values.map((value) => finiteNumber(value, 0)).filter((value) => value > 0);
+  return positives.length ? Math.min(...positives) : 0;
+}
+
+function numberOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function round6(value) {
+  return Math.round(Number(value || 0) * 1_000_000) / 1_000_000;
 }

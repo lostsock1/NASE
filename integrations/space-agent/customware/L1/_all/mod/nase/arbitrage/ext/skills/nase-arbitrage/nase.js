@@ -4,14 +4,19 @@ import {
   evaluateOpportunity,
   normalizePolicy,
   rankScoutSignals,
+  resolveExecutableLegs,
   simulatePaperTrade,
 } from "../../../policy.js";
 
-const NASE_API_BASE = "http://127.0.0.1:8787";
+const DEFAULT_NASE_API_BASE = "http://127.0.0.1:8787";
 const dashboardUrl = "https://phd-postcard-brief-representation.trycloudflare.com/";
 
+function apiBase() {
+  return globalThis.NASE_API_BASE || globalThis.localStorage?.getItem?.("nase:apiBase") || DEFAULT_NASE_API_BASE;
+}
+
 function proxyUrl(path) {
-  const target = new URL(path, NASE_API_BASE);
+  const target = new URL(path, apiBase());
   return `/api/proxy?url=${encodeURIComponent(target.toString())}`;
 }
 
@@ -183,5 +188,6 @@ export {
   evaluateOpportunity,
   normalizePolicy,
   rankScoutSignals,
+  resolveExecutableLegs,
   simulatePaperTrade,
 };

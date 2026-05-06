@@ -28,6 +28,13 @@ const strongPayload = {
   analysis: {
     actionability: "strong_candidate",
     executable_related_quotes: 2,
+    executable_legs: {
+      complete: true,
+      buy_quote: { id: "buy", dex: "Velora", price: "2500", executable: true, notional_usd: 1000 },
+      sell_quote: { id: "sell", dex: "Odos", price: "2515.5", executable: true, notional_usd: 1000 },
+      spread_pct: 0.62,
+      max_notional_usd: 1000,
+    },
     caveats: [],
   },
 };
@@ -45,14 +52,16 @@ const evaluation = evaluateOpportunity(strongPayload, { alerts: [] }, policy);
 assert.equal(evaluation.status, "actionable");
 assert.equal(evaluation.notify, true);
 assert.equal(evaluation.executable_related_quotes, 2);
+assert.equal(evaluation.executable_legs.complete, true);
 
 const noExecutable = evaluateOpportunity(
-  { ...strongPayload, related_quotes: [], analysis: { ...strongPayload.analysis, executable_related_quotes: 0 } },
+  { ...strongPayload, related_quotes: [], analysis: { ...strongPayload.analysis, executable_related_quotes: 0, executable_legs: { complete: false } } },
   { alerts: [] },
   policy,
 );
 assert.equal(noExecutable.status, "blocked");
 assert.ok(noExecutable.hard_blocks.includes("no executable related quote"));
+assert.ok(noExecutable.hard_blocks.includes("missing executable buy/sell leg quote"));
 
 const criticalSource = evaluateOpportunity(
   strongPayload,
@@ -66,6 +75,17 @@ const paper = simulatePaperTrade(strongPayload, { alerts: [], evaluation }, poli
 assert.equal(paper.status, "paper_candidate");
 assert.ok(paper.estimated_net_usd > 0);
 assert.equal(paper.budget_usd, 250);
+assert.equal(paper.executable_buy_price, 2500);
+assert.equal(paper.executable_sell_price, 2515.5);
+assert.equal(paper.scanner_spread_pct, 0.62);
+
+const poolOnlyPaper = simulatePaperTrade(
+  { ...strongPayload, analysis: { ...strongPayload.analysis, executable_legs: { complete: false } } },
+  { alerts: [] },
+  policy,
+);
+assert.equal(poolOnlyPaper.status, "paper_reject");
+assert.ok(poolOnlyPaper.reasons.includes("paper mode requires executable buy and sell legs"));
 
 const intent = createTradeIntentDraft(strongPayload, { evaluation, paper }, policy);
 assert.equal(intent.status, "intent_requires_executor");

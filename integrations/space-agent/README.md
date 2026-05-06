@@ -91,6 +91,26 @@ Open:
 http://127.0.0.1:8788/enter?next=%2F%23%2Fnase%2Farbitrage
 ```
 
+## Docker
+
+From the NASE repo root:
+
+```bash
+docker compose up --build
+```
+
+Compose starts NASE and Space Agent together. It mounts this integration pack into Space Agent through `CUSTOMWARE_PATH` and overlays:
+
+```text
+docker/space-agent-nase-config.js
+```
+
+That file points the browser helper at `http://nase-web:8787` through Space Agent's server-side proxy. Local non-Docker runs use the default:
+
+```text
+customware/L1/_all/mod/nase/arbitrage/config.js
+```
+
 ## Agent Skill
 
 Inside Space Agent, load:
@@ -133,10 +153,12 @@ Implemented modules:
 
 ## Paper Armed Mode
 
-Paper Armed Mode simulates:
+Paper Armed Mode simulates only when the explained opportunity has executable buy and sell leg quotes. It rejects pool-only candidates.
+
+It simulates:
 
 - budget allocation
-- gross edge
+- gross edge from executable leg prices
 - DEX fees
 - slippage
 - gas

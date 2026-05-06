@@ -53,15 +53,29 @@ globalThis.fetch = async (input) => {
   if (target.pathname === "/api/explain/good-1") {
     return jsonResponse({
       opportunity: goodOpportunity,
-      related_quotes: [{ executable: true }, { executable: true }],
-      analysis: { actionability: "strong_candidate", executable_related_quotes: 2, caveats: [] },
+      related_quotes: [
+        { id: "buy", dex: "Velora", price: "2500", executable: true, notional_usd: 1000 },
+        { id: "sell", dex: "Odos", price: "2513.75", executable: true, notional_usd: 1000 },
+      ],
+      analysis: {
+        actionability: "strong_candidate",
+        executable_related_quotes: 2,
+        executable_legs: {
+          complete: true,
+          buy_quote: { id: "buy", dex: "Velora", price: "2500", executable: true, notional_usd: 1000 },
+          sell_quote: { id: "sell", dex: "Odos", price: "2513.75", executable: true, notional_usd: 1000 },
+          spread_pct: 0.55,
+          max_notional_usd: 1000,
+        },
+        caveats: [],
+      },
     });
   }
   if (target.pathname === "/api/explain/weak-1") {
     return jsonResponse({
       opportunity: weakOpportunity,
       related_quotes: [],
-      analysis: { actionability: "candidate", executable_related_quotes: 0, caveats: ["confidence below 60"] },
+      analysis: { actionability: "candidate", executable_related_quotes: 0, executable_legs: { complete: false }, caveats: ["confidence below 60"] },
     });
   }
   throw new Error(`unexpected fetch ${target.pathname}`);

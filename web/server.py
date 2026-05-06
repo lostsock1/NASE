@@ -343,11 +343,12 @@ class WebTracker:
         confidence = float(selected.get("confidence") or 0)
         spread = float(selected.get("spread_pct") or 0)
         executable_count = sum(1 for q in related_quotes if q.get("executable"))
+        executable_legs = self._executable_legs(selected, related_quotes)
         caveats = []
         if confidence < 60:
             caveats.append("confidence below 60; verify source agreement and pool depth before acting")
-        if executable_count == 0:
-            caveats.append("no directly executable quote in related quote audit")
+        if not executable_legs["complete"]:
+            caveats.append("missing executable buy/sell leg quote for paper trading")
         if not selected.get("liquidity_usd"):
             caveats.append("liquidity is unknown or zero in normalized data")
 
@@ -362,10 +363,51 @@ class WebTracker:
                 "confidence": confidence,
                 "sources": selected.get("sources", []),
                 "executable_related_quotes": executable_count,
+                "executable_legs": executable_legs,
                 "caveats": caveats,
                 "actionability": "candidate" if caveats else "strong_candidate",
             },
         }
+
+    def _executable_legs(self, selected: dict[str, Any], related_quotes: list[dict[str, Any]]) -> dict[str, Any]:
+        executable = [q for q in related_quotes if q.get("executable")]
+        buy_target = str(selected.get("buy_at") or "")
+        sell_target = str(selected.get("sell_at") or "")
+        buy_quote = self._match_executable_quote(executable, buy_target, prefer_low=True)
+        sell_quote = self._match_executable_quote(executable, sell_target, prefer_low=False)
+        complete = bool(buy_quote and sell_quote and buy_quote.get("id") != sell_quote.get("id"))
+        spread_pct = 0.0
+        max_notional = 0.0
+        if complete:
+            buy_price = float(buy_quote.get("price") or 0)
+            sell_price = float(sell_quote.get("price") or 0)
+            if buy_price > 0 and sell_price > 0:
+                spread_pct = ((sell_price - buy_price) / buy_price) * 100
+            max_notional = min(float(buy_quote.get("notional_usd") or 0), float(sell_quote.get("notional_usd") or 0))
+        return {
+            "complete": complete,
+            "buy_quote": buy_quote,
+            "sell_quote": sell_quote,
+            "spread_pct": round(spread_pct, 6),
+            "max_notional_usd": max_notional,
+            "source": "executable_related_quotes",
+        }
+
+    @staticmethod
+    def _match_executable_quote(quotes: list[dict[str, Any]], target: str, prefer_low: bool) -> dict[str, Any] | None:
+        if not quotes:
+            return None
+        target_norm = target.lower()
+        matched = [
+            q for q in quotes
+            if target_norm
+            and (
+                str(q.get("dex") or "").lower().startswith(target_norm)
+                or target_norm.startswith(str(q.get("dex") or "").lower())
+            )
+        ]
+        candidates = matched or quotes
+        return sorted(candidates, key=lambda q: float(q.get("price") or 0), reverse=not prefer_low)[0]
 
     @staticmethod
     def _query_float(request: web.Request, name: str, default: float) -> float:
