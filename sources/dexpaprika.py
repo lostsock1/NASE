@@ -32,7 +32,7 @@ class DexPaprikaSource(Source):
         quotes: list[PriceQuote] = []
         tasks = []
         for chain in self._chains:
-            for page in range(MAX_PAGES_PER_CHAIN):
+            for page in range(1, MAX_PAGES_PER_CHAIN + 1):
                 tasks.append(self._fetch_pools_page(chain, page, POOLS_PER_PAGE))
 
         results = await asyncio.gather(*tasks, return_exceptions=True)

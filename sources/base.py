@@ -21,15 +21,29 @@ class Source(ABC):
         self._bucket = TokenBucket(rate=config.max_rps, burst=config.max_concurrent)
         self._semaphore = asyncio.Semaphore(config.max_concurrent)
         self._session: Optional[aiohttp.ClientSession] = None
+        self._consecutive_failures = 0
+        self._last_error: str | None = None
 
     @property
     def healthy(self) -> bool:
-        return not self._bucket.status["rate_limited"]
+        status = self._bucket.status
+        return (
+            self._consecutive_failures == 0
+            and not status["rate_limited"]
+            and not status.get("circuit_open", False)
+        )
 
     @property
     def bucket_status(self) -> dict:
         """Full telemetry from the rate limiter (for TUI display)."""
         return self._bucket.status
+
+    @property
+    def failure_status(self) -> dict:
+        return {
+            "consecutive_failures": self._consecutive_failures,
+            "last_error": self._last_error,
+        }
 
     async def start(self) -> None:
         connector = aiohttp.TCPConnector(
@@ -60,15 +74,26 @@ class Source(ABC):
             return []
 
         try:
-            results = await self._fetch_impl()
+            results = await asyncio.wait_for(self._fetch_impl(), timeout=self.config.timeout_seconds)
             logger.info(
                 "Source %s fetched %d pairs",
                 self.name,
                 len(results),
                 extra={"source": self.name, "pairs": len(results)},
             )
+            self._record_success()
             return results
+        except asyncio.TimeoutError:
+            self._record_failure(f"timeout after {self.config.timeout_seconds}s")
+            logger.error(
+                "Source %s timed out after %ss",
+                self.name,
+                self.config.timeout_seconds,
+                extra={"source": self.name},
+            )
+            return []
         except RateLimitedError:
+            self._last_error = "rate limited"
             logger.warning(
                 "Source %s 429 backoff %.0fs",
                 self.name,
@@ -77,6 +102,7 @@ class Source(ABC):
             )
             return []
         except Exception as e:
+            self._record_failure(str(e))
             logger.error(
                 "Source %s failed: %s",
                 self.name,
@@ -133,6 +159,14 @@ class Source(ABC):
             return float(val)
         except (ValueError, TypeError):
             return None
+
+    def _record_success(self) -> None:
+        self._consecutive_failures = 0
+        self._last_error = None
+
+    def _record_failure(self, message: str) -> None:
+        self._consecutive_failures += 1
+        self._last_error = message
 
     @abstractmethod
     async def _fetch_impl(self) -> list[PriceQuote]:

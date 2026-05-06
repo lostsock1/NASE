@@ -24,7 +24,7 @@ class OpportunityTable(DataTable):
 
     def on_mount(self) -> None:
         self.cursor_type = "row"
-        self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "TVL", "Buy $", "Sell $", "Spread", "Profit", "Age")
+        self.add_columns("#", "Coin", "Pair", "Src Ch", "Buy At", "Sell At", "Rcv Ch", "TVL", "Buy $", "Sell $", "Spread", "Conf", "Profit", "Age")
 
     def action_request_detail(self) -> None:
         if self.cursor_row is not None and self.row_count > 0:
@@ -35,6 +35,12 @@ class OpportunityTable(DataTable):
                 pass
 
     def update_data(self, opportunities: list[Opportunity], use_capital: bool) -> None:
+        selected_key: str | None = None
+        if self.cursor_row is not None and self.row_count > 0:
+            try:
+                selected_key = self.ordered_rows[self.cursor_row].key
+            except Exception:
+                pass
         cursor_idx: int = self.cursor_row if self.row_count > 0 else 0
 
         for key in [r.key for r in reversed(self.ordered_rows)]:
@@ -67,14 +73,32 @@ class OpportunityTable(DataTable):
                 buy_str,
                 sell_str,
                 spread_color,
+                self._confidence_style(o.confidence_score),
                 profit,
                 age,
                 key=o.pair.pair_address,
             )
 
+        if selected_key is not None and self.row_count > 0:
+            for row_idx in range(self.row_count):
+                try:
+                    if self.ordered_rows[row_idx].key == selected_key:
+                        self.move_cursor(row=row_idx, animate=False)
+                        return
+                except Exception:
+                    pass
+
         if self.row_count > 0:
             target = min(cursor_idx, self.row_count - 1)
             self.move_cursor(row=target, animate=False)
+
+    @staticmethod
+    def _confidence_style(score: int) -> str:
+        if score >= 80:
+            return f"[#22c55e]{score}[/]"
+        if score >= 60:
+            return f"[#eab308]{score}[/]"
+        return f"[#ef4444]{score}[/]"
 
     @staticmethod
     def _spread_style(spread_pct: float, age: float) -> str:

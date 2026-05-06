@@ -21,7 +21,19 @@ from pipeline.filter import ResultFilter
 
 from sources.dexscreener import DexScreenerSource
 from sources.dexpaprika import DexPaprikaSource
+from sources.geckoterminal import GeckoTerminalSource
+from sources.jupiter import JupiterSource
+from sources.hyperliquid import HyperliquidSource
+from sources.hyperswap import HyperSwapSource
 from sources.livecoinwatch import LiveCoinWatchClient
+from sources.openocean import OpenOceanSource
+from sources.lifi import LifiSource
+from sources.zerox import ZeroXSource
+from sources.oneinch import OneInchSource
+from sources.velora import VeloraSource
+from sources.odos import OdosSource
+from sources.kyberswap import KyberSwapSource
+from sources.trafficdex import TrafficDexSource
 
 from util.config import Config
 
@@ -127,6 +139,55 @@ class NaseApp(App):
                     api_key=os.getenv("DEXPAPRIKA_API_KEY"),
                 )
             )
+        if self._config.sources.get("geckoterminal") and self._config.sources["geckoterminal"].enabled:
+            self._collector.register(
+                GeckoTerminalSource(
+                    self._config.sources["geckoterminal"],
+                    chains=self._config.chains,
+                    api_key=os.getenv("GECKOTERMINAL_API_KEY"),
+                )
+            )
+        if self._config.sources.get("jupiter") and self._config.sources["jupiter"].enabled:
+            self._collector.register(
+                JupiterSource(
+                    self._config.sources["jupiter"],
+                    api_key=os.getenv("JUPITER_API_KEY"),
+                )
+            )
+        if self._config.sources.get("hyperliquid") and self._config.sources["hyperliquid"].enabled:
+            self._collector.register(
+                HyperliquidSource(
+                    self._config.sources["hyperliquid"],
+                    api_key=os.getenv("HYPERLIQUID_API_KEY"),
+                )
+            )
+        if self._config.sources.get("hyperswap") and self._config.sources["hyperswap"].enabled:
+            self._collector.register(
+                HyperSwapSource(
+                    self._config.sources["hyperswap"],
+                    api_key=os.getenv("HYPERSWAP_API_KEY"),
+                )
+            )
+        source_specs = [
+            ("openocean", OpenOceanSource, "OPENOCEAN_API_KEY"),
+            ("lifi", LifiSource, "LIFI_API_KEY"),
+            ("zerox", ZeroXSource, "ZEROX_API_KEY"),
+            ("oneinch", OneInchSource, "ONEINCH_API_KEY"),
+            ("velora", VeloraSource, "VELORA_API_KEY"),
+            ("odos", OdosSource, "ODOS_API_KEY"),
+            ("kyberswap", KyberSwapSource, "KYBERSWAP_API_KEY"),
+            ("trafficdex", TrafficDexSource, "GECKOTERMINAL_API_KEY"),
+        ]
+        for source_name, source_cls, env_name in source_specs:
+            source_cfg = self._config.sources.get(source_name)
+            if source_cfg and source_cfg.enabled:
+                self._collector.register(
+                    source_cls(
+                        source_cfg,
+                        chains=self._config.chains,
+                        api_key=os.getenv(env_name),
+                    )
+                )
 
     async def _start_lcw(self) -> None:
         import os
@@ -225,7 +286,12 @@ class NaseApp(App):
         detail.hide_panel()
         for o in self._opportunities:
             if o.pair.pair_address == pair_addr:
-                matching_quotes = [q for q in self._all_quotes if q.pair.pair_address == pair_addr]
+                matching_quotes = [
+                    q for q in self._all_quotes
+                    if q.pair.chain == o.pair.chain
+                    and q.pair.base.address.lower() == o.pair.base.address.lower()
+                    and q.pair.quote.address.lower() == o.pair.quote.address.lower()
+                ]
                 ref_rates = self._pipeline_data.get("reference_rates", {})
                 detail.show_opportunity(o, matching_quotes, self._pipeline_data["capital"], ref_rates)
                 return

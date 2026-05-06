@@ -47,6 +47,10 @@ class PriceQuote:
     bid_price: Decimal
     liquidity_usd: float = 0.0
     volume_24h_usd: float = 0.0
+    confidence_score: int = 50
+    executable: bool = False
+    notional_usd: float = 0.0
+    validation_notes: tuple[str, ...] = field(default_factory=tuple)
     fetched_at: float = field(default_factory=time.time)
 
     @property
@@ -71,6 +75,8 @@ class Opportunity:
     sell_chain: str = ""
     sell_pair_address: str = ""
     liquidity_usd: float = 0.0
+    confidence_score: int = 0
+    validation_notes: tuple[str, ...] = field(default_factory=tuple)
     source_apis: list[str] = field(default_factory=list)
     detected_at: float = field(default_factory=time.time)
 

@@ -45,7 +45,9 @@ class DetailPanel(Vertical):
         )
         gross = opp.sell_price - opp.buy_price
         net = opp.net_profit_usd
-        lines.append(f"  Spread: {opp.spread_pct:.2f}%    Gross: ${gross:,.2f}    Net: ${net:,.2f}")
+        lines.append(f"  Spread: {opp.spread_pct:.2f}%    Gross: ${gross:,.2f}    Net: ${net:,.2f}    Confidence: {opp.confidence_score}")
+        if opp.validation_notes:
+            lines.append(f"  [dim]Validation: {'; '.join(opp.validation_notes[:4])}[/]")
         if capital > 0:
             out = capital * (1 + opp.spread_pct / 100)
             lines.append(f"  Capital ${capital:,.0f} -> Output: ${out:,.2f}")

@@ -1,0 +1,400 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="/mod/nase/arbitrage/arbitrage.css" />
+    <script src="/mod/nase/arbitrage/config.js"></script>
+    <script type="module" src="/mod/nase/arbitrage/store.js"></script>
+  </head>
+  <body>
+    <section class="nase-page" x-data x-init="$store.naseArbitrage.init()">
+      <x-context data-tag="nase-arbitrage"></x-context>
+      <div class="nase-shell">
+        <header class="nase-hero">
+          <div>
+            <p class="nase-kicker">NASE x Space Agent</p>
+            <h1>Arbitrage Operations Workspace</h1>
+            <p>
+              Live source health, executable quote depth, and agent-ready controls powered by
+              the NASE tracker running on this VM.
+            </p>
+          </div>
+          <div class="nase-actions">
+            <button
+              type="button"
+              class="secondary-button"
+              @click="$store.naseArbitrage.openNaseDashboard()"
+            >
+              <x-icon>open_in_new</x-icon>
+              <span>Open NASE</span>
+            </button>
+            <button
+              type="button"
+              class="primary-button"
+              :disabled="$store.naseArbitrage.loading"
+              @click="$store.naseArbitrage.refresh()"
+            >
+              <x-icon x-text="$store.naseArbitrage.loading ? 'hourglass_top' : 'refresh'"></x-icon>
+              <span x-text="$store.naseArbitrage.loading ? 'Refreshing' : 'Refresh'"></span>
+            </button>
+          </div>
+        </header>
+
+        <template x-if="$store.naseArbitrage.error">
+          <div class="nase-alert" x-text="$store.naseArbitrage.error"></div>
+        </template>
+
+        <section class="nase-metrics" aria-label="NASE metrics">
+          <article class="nase-metric">
+            <span>Opportunities</span>
+            <strong x-text="$store.naseArbitrage.formatNumber($store.naseArbitrage.summary.opportunities)"></strong>
+            <small x-text="`best ${$store.naseArbitrage.formatPercent($store.naseArbitrage.summary.best_spread)}`"></small>
+          </article>
+          <article class="nase-metric">
+            <span>Normalized Quotes</span>
+            <strong x-text="$store.naseArbitrage.formatNumber($store.naseArbitrage.summary.normalized_quotes)"></strong>
+            <small x-text="`${$store.naseArbitrage.formatNumber($store.naseArbitrage.summary.raw_quotes)} raw`"></small>
+          </article>
+          <article class="nase-metric">
+            <span>Executable</span>
+            <strong x-text="$store.naseArbitrage.formatNumber($store.naseArbitrage.summary.executable_quotes)"></strong>
+            <small>depth checked</small>
+          </article>
+          <article class="nase-metric">
+            <span>Confidence</span>
+            <strong x-text="$store.naseArbitrage.formatNumber($store.naseArbitrage.summary.median_confidence)"></strong>
+            <small>median score</small>
+          </article>
+        </section>
+
+        <section class="nase-card nase-automation-card">
+          <div class="nase-card-head">
+            <div>
+              <h2>Scout And Paper Desk</h2>
+              <p x-text="$store.naseArbitrage.automationStatus"></p>
+            </div>
+            <div class="nase-actions">
+              <button type="button" class="secondary-button" @click="$store.naseArbitrage.toggleScout()">
+                <x-icon x-text="$store.naseArbitrage.scoutEnabled ? 'visibility' : 'visibility_off'"></x-icon>
+                <span x-text="$store.naseArbitrage.scoutEnabled ? 'Scout On' : 'Scout Off'"></span>
+              </button>
+              <button type="button" class="secondary-button" @click="$store.naseArbitrage.togglePaper()">
+                <x-icon x-text="$store.naseArbitrage.paperEnabled ? 'receipt_long' : 'pause_circle'"></x-icon>
+                <span x-text="$store.naseArbitrage.paperEnabled ? 'Paper On' : 'Paper Off'"></span>
+              </button>
+              <button type="button" class="secondary-button" @click="$store.naseArbitrage.toggleIntentArmed()">
+                <x-icon x-text="$store.naseArbitrage.intentArmed ? 'lock_open' : 'lock'"></x-icon>
+                <span x-text="$store.naseArbitrage.intentArmed ? 'Intent Armed' : 'Intent Locked'"></span>
+              </button>
+              <button type="button" class="primary-button" :disabled="$store.naseArbitrage.scouting" @click="$store.naseArbitrage.runAutomation({ force: true })">
+                <x-icon x-text="$store.naseArbitrage.scouting ? 'hourglass_top' : 'radar'"></x-icon>
+                <span x-text="$store.naseArbitrage.scouting ? 'Checking' : 'Check Now'"></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="nase-policy-grid">
+            <label>
+              <span>Min Confidence</span>
+              <input type="number" min="1" max="99" step="1" x-model.number="$store.naseArbitrage.policy.minConfidence" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+            <label>
+              <span>Min Spread %</span>
+              <input type="number" min="0" step="0.01" x-model.number="$store.naseArbitrage.policy.minSpreadPct" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+            <label>
+              <span>Paper Budget</span>
+              <input type="number" min="0" step="25" x-model.number="$store.naseArbitrage.policy.paperBudgetUsd" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+            <label>
+              <span>Max Trade</span>
+              <input type="number" min="0" step="25" x-model.number="$store.naseArbitrage.policy.maxBudgetPerTradeUsd" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+            <label>
+              <span>Min Net $</span>
+              <input type="number" min="0" step="0.5" x-model.number="$store.naseArbitrage.policy.minNetEdgeUsd" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+            <label>
+              <span>Max Age s</span>
+              <input type="number" min="0" step="5" x-model.number="$store.naseArbitrage.policy.maxAgeSeconds" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+            <label>
+              <span>Paper Exec</span>
+              <select x-model="$store.naseArbitrage.policy.paperExecutionStyle" @change="$store.naseArbitrage.updatePolicy()">
+                <option value="market_exact_in">Market replay</option>
+                <option value="limit_hypothesis">Limit hypothesis</option>
+              </select>
+            </label>
+            <label>
+              <span>Live Exec</span>
+              <select x-model="$store.naseArbitrage.policy.liveExecutionStyle" @change="$store.naseArbitrage.updatePolicy()">
+                <option value="limit_only">Limit only</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="market_exact_in">Market exact-in</option>
+              </select>
+            </label>
+            <label>
+              <span>Live Slip bps</span>
+              <input type="number" min="0" step="1" x-model.number="$store.naseArbitrage.policy.maxLiveSlippageBps" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+            <label>
+              <span>Quote TTL s</span>
+              <input type="number" min="1" step="1" x-model.number="$store.naseArbitrage.policy.quoteTtlSeconds" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+            <label>
+              <span>Confirm $</span>
+              <input type="number" min="0" step="25" x-model.number="$store.naseArbitrage.policy.humanConfirmUsd" @change="$store.naseArbitrage.updatePolicy()" />
+            </label>
+          </div>
+        </section>
+
+        <section class="nase-grid">
+          <article class="nase-card nase-opportunities-card">
+            <div class="nase-card-head">
+              <div>
+                <h2>Top Opportunities</h2>
+                <p x-text="$store.naseArbitrage.snapshotAgeLabel"></p>
+              </div>
+              <span class="nase-status" x-text="$store.naseArbitrage.statusLabel"></span>
+            </div>
+            <div class="nase-list">
+              <template x-for="opp in $store.naseArbitrage.topOpportunities" :key="`${opp.pair}:${opp.buy_at}:${opp.sell_at}:${opp.spread_pct}`">
+                <article class="nase-row">
+                  <div>
+                    <strong x-text="opp.pair"></strong>
+                    <span x-text="`${opp.buy_at} -> ${opp.sell_at}`"></span>
+                  </div>
+                  <div>
+                    <strong x-text="$store.naseArbitrage.formatPercent(opp.spread_pct)"></strong>
+                    <span x-text="`conf ${opp.confidence}`"></span>
+                  </div>
+                </article>
+              </template>
+            </div>
+          </article>
+
+          <article class="nase-card">
+            <div class="nase-card-head">
+              <div>
+                <h2>Source Health</h2>
+                <p>Rate limits and circuit breakers from the tracker.</p>
+              </div>
+            </div>
+            <div class="nase-source-grid">
+              <template x-for="source in $store.naseArbitrage.sources" :key="source.name">
+                <div class="nase-source" :class="$store.naseArbitrage.sourceTone(source)">
+                  <strong x-text="source.name"></strong>
+                  <span x-text="$store.naseArbitrage.sourceLabel(source)"></span>
+                </div>
+              </template>
+            </div>
+          </article>
+        </section>
+
+        <section class="nase-grid">
+          <article class="nase-card">
+            <div class="nase-card-head">
+              <div>
+                <h2>Scout Signals</h2>
+                <p x-text="`${$store.naseArbitrage.actionableSignals.length} candidates`"></p>
+              </div>
+            </div>
+            <div class="nase-list">
+              <template x-for="signal in $store.naseArbitrage.actionableSignals" :key="signal.id">
+                <article class="nase-row nase-signal" :class="$store.naseArbitrage.signalTone(signal)">
+                  <div>
+                    <strong x-text="signal.pair"></strong>
+                    <span x-text="`${signal.buy_at} -> ${signal.sell_at}`"></span>
+                    <small x-text="signal.hard_blocks[0] || signal.warnings[0] || `${signal.executable_related_quotes} executable checks`"></small>
+                  </div>
+                  <div>
+                    <strong x-text="$store.naseArbitrage.formatPercent(signal.spread_pct)"></strong>
+                    <span x-text="`${signal.status} / ${signal.score}`"></span>
+                    <button type="button" :disabled="!$store.naseArbitrage.intentArmed" @click="$store.naseArbitrage.draftIntent(signal)">
+                      <x-icon>description</x-icon>
+                    </button>
+                  </div>
+                </article>
+              </template>
+            </div>
+          </article>
+
+          <article class="nase-card">
+            <div class="nase-card-head">
+              <div>
+                <h2>Paper Journal</h2>
+                <p x-text="`${$store.naseArbitrage.paperJournal.length} entries`"></p>
+              </div>
+              <button type="button" class="secondary-button" @click="$store.naseArbitrage.clearJournal()">
+                <x-icon>delete</x-icon>
+              </button>
+              <button type="button" class="secondary-button" :disabled="$store.naseArbitrage.scouting" @click="$store.naseArbitrage.startServerPaperRun(10)">
+                <x-icon>play_arrow</x-icon>
+                <span>Run 10m</span>
+              </button>
+            </div>
+            <div class="nase-list">
+              <template x-for="entry in $store.naseArbitrage.paperJournal.slice(0, 6)" :key="entry.id">
+                <article class="nase-row">
+                  <div>
+                    <strong x-text="entry.pair"></strong>
+                    <span x-text="entry.route"></span>
+                    <small x-text="`${entry.paper_execution_style || 'market_exact_in'} / ${entry.fill_certainty || 'checked'}`"></small>
+                  </div>
+                  <div>
+                    <strong x-text="$store.naseArbitrage.formatMoney(entry.estimated_net_usd)"></strong>
+                    <span x-text="entry.status"></span>
+                  </div>
+                </article>
+              </template>
+            </div>
+          </article>
+        </section>
+
+        <section class="nase-card">
+          <div class="nase-card-head">
+            <div>
+              <h2>Server Paper Runs</h2>
+              <p x-text="`${$store.naseArbitrage.paperRuns.length} runs`"></p>
+            </div>
+            <button type="button" class="secondary-button" @click="$store.naseArbitrage.refreshPaperRuns()">
+              <x-icon>refresh</x-icon>
+            </button>
+          </div>
+          <div class="nase-list">
+            <template x-for="run in $store.naseArbitrage.paperRuns.slice(0, 5)" :key="run.id">
+              <article class="nase-row">
+                <div>
+                  <strong x-text="run.status"></strong>
+                  <span x-text="`${run.cycles} cycles / ${run.candidates} candidates`"></span>
+                  <small x-text="run.errors?.[0] || `${run.accepted} accepted / ${run.rejected} rejected`"></small>
+                </div>
+                <div>
+                  <strong x-text="`${Math.round((run.duration_seconds || 0) / 60)}m`"></strong>
+                  <span x-text="run.finished_at ? 'finished' : 'running'"></span>
+                </div>
+              </article>
+            </template>
+          </div>
+        </section>
+
+        <section class="nase-card">
+          <div class="nase-card-head">
+            <div>
+              <h2>Trade Intent Drafts</h2>
+              <p x-text="`${$store.naseArbitrage.tradeIntents.length} drafts`"></p>
+            </div>
+          </div>
+          <div class="nase-list">
+            <template x-for="intent in $store.naseArbitrage.tradeIntents.slice(0, 5)" :key="intent.id">
+              <article class="nase-row">
+                <div>
+                  <strong x-text="intent.pair"></strong>
+                  <span x-text="`${intent.status} / ${intent.execution_style || 'limit_only'}`"></span>
+                </div>
+                <div>
+                  <strong x-text="$store.naseArbitrage.formatMoney(intent.paper.estimated_net_usd)"></strong>
+                  <span x-text="intent.human_confirmation_required ? 'confirm required' : (intent.requires_executor ? 'executor required' : 'blocked')"></span>
+                  <button type="button" @click="$store.naseArbitrage.validateIntent(intent)"><x-icon>fact_check</x-icon></button>
+                  <button type="button" @click="$store.naseArbitrage.submitIntent(intent)"><x-icon>send</x-icon></button>
+                </div>
+              </article>
+            </template>
+          </div>
+        </section>
+
+        <section class="nase-card">
+          <div class="nase-card-head">
+            <div>
+              <h2>Executor Decisions</h2>
+              <p x-text="`${$store.naseArbitrage.executorDecisions.length} checks`"></p>
+            </div>
+          </div>
+          <div class="nase-list">
+            <template x-for="decision in $store.naseArbitrage.executorDecisions.slice(0, 5)" :key="decision.id">
+              <article class="nase-row">
+                <div>
+                  <strong x-text="decision.pair || decision.opportunity_id"></strong>
+                  <span x-text="`${decision.action} / ${decision.status}`"></span>
+                  <small x-text="decision.blocks?.[0] || decision.warnings?.[0] || 'ready'"></small>
+                </div>
+                <div>
+                  <strong x-text="decision.submitted ? 'submitted' : 'dry-run'"></strong>
+                  <span x-text="decision.signed ? 'signed' : 'unsigned'"></span>
+                </div>
+              </article>
+            </template>
+          </div>
+        </section>
+
+        <section class="nase-card">
+          <div class="nase-card-head">
+            <div>
+              <h2>Trade Ledger</h2>
+              <p x-text="`${$store.naseArbitrage.ledgerSummary.total} records / ${$store.naseArbitrage.formatMoney($store.naseArbitrage.ledgerSummary.expected_net_usd)} expected`"></p>
+            </div>
+            <span class="nase-status" x-text="`${$store.naseArbitrage.ledgerSummary.win_rate}% win rate`"></span>
+          </div>
+          <div class="nase-ledger-stats">
+            <span x-text="`${$store.naseArbitrage.ledgerSummary.paper_trades} paper`"></span>
+            <span x-text="`${$store.naseArbitrage.ledgerSummary.intents} intents`"></span>
+            <span x-text="`${$store.naseArbitrage.ledgerSummary.awaiting_executor} awaiting`"></span>
+            <span x-text="$store.naseArbitrage.formatMoney($store.naseArbitrage.ledgerSummary.realized_net_usd)"></span>
+          </div>
+          <div class="nase-list">
+            <template x-for="record in $store.naseArbitrage.tradeLedger.slice(0, 8)" :key="record.id">
+              <article class="nase-row">
+                <div>
+                  <strong x-text="record.pair"></strong>
+                  <span x-text="`${record.type} / ${record.outcome}`"></span>
+                  <small x-text="record.route"></small>
+                </div>
+                <div>
+                  <strong x-text="$store.naseArbitrage.formatMoney(record.realized_net_usd ?? record.expected_net_usd)"></strong>
+                  <span x-text="record.status"></span>
+                  <button type="button" @click="$store.naseArbitrage.markLedger(record, 'win')"><x-icon>trending_up</x-icon></button>
+                  <button type="button" @click="$store.naseArbitrage.markLedger(record, 'loss')"><x-icon>trending_down</x-icon></button>
+                  <button type="button" @click="$store.naseArbitrage.markLedger(record, 'skip')"><x-icon>block</x-icon></button>
+                </div>
+              </article>
+            </template>
+          </div>
+        </section>
+
+        <section class="nase-card nase-agent-card">
+          <div class="nase-card-head">
+            <div>
+              <h2>Agent Actions</h2>
+              <p>Use the loaded NASE skill to inspect live opportunities from inside Space Agent.</p>
+            </div>
+          </div>
+          <div class="nase-prompt-grid">
+            <button type="button" @click="$store.naseArbitrage.copyPrompt('Load the nase-arbitrage skill and explain the top 5 executable opportunities by confidence and source mix.')">
+              Explain top executable opportunities
+            </button>
+            <button type="button" @click="$store.naseArbitrage.copyPrompt('Load the nase-arbitrage skill and audit which NASE sources are rate limited, unhealthy, or producing zero normalized quotes.')">
+              Audit source health
+            </button>
+            <button type="button" @click="$store.naseArbitrage.copyPrompt('Load the nase-arbitrage skill and compare WETH/USDC executable quotes across Velora, Odos, and KyberSwap.')">
+              Compare executable quotes
+            </button>
+          </div>
+          <p class="nase-copy-status" x-text="$store.naseArbitrage.copyStatus"></p>
+        </section>
+
+        <section class="nase-api-shell">
+          <div class="nase-card-head">
+            <div>
+              <h2>NASE API Surface</h2>
+              <p>Space Agent uses these stable endpoints through its server-side proxy.</p>
+            </div>
+          </div>
+          <div class="nase-endpoint-grid">
+            <code>/api/sources</code>
+            <code>/api/opportunities</code>
+            <code>/api/alerts</code>
+            <code>/api/explain/:id</code>
+          </div>
+        </section>
+      </div>
+    </section>
+  </body>
+</html>

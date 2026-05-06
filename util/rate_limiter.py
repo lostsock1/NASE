@@ -13,6 +13,7 @@ class TokenBucket:
     _RETRY_DELAYS = [6.0, 12.0, 24.0, 48.0, 60.0]
     _COOLDOWN_REPEATED_429 = 60.0
     _REPEATED_429_THRESHOLD = 3
+    _CIRCUIT_OPEN_SECONDS = 300.0
 
     def __init__(self, rate: float, burst: int = 1):
         self._rate = max(rate, 0.01)
@@ -111,6 +112,7 @@ class TokenBucket:
             "total_429s": self._total_429s,
             "time_until_next": wait,
             "current_delay": self._current_delay,
+            "circuit_open": wait >= self._CIRCUIT_OPEN_SECONDS,
             "total_requests": self._total_requests,
             "success_rate": round((self._total_requests / total * 100) if total > 0 else 100.0, 1),
         }

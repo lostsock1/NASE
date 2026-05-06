@@ -21,13 +21,17 @@ class Collector:
         statuses = {}
         for src in self._sources:
             bs = src.bucket_status
+            fs = src.failure_status
             statuses[src.name] = {
                 "healthy": src.healthy,
                 "rate_limited": bs["rate_limited"],
                 "rate_wait_seconds": bs["time_until_next"],
+                "circuit_open": bs.get("circuit_open", False),
                 "consecutive_429s": bs["consecutive_429s"],
                 "total_429s": bs["total_429s"],
                 "success_rate": bs["success_rate"],
+                "consecutive_failures": fs["consecutive_failures"],
+                "last_error": fs["last_error"],
             }
         return statuses
 
