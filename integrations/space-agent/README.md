@@ -106,12 +106,15 @@ await nase.sources();
 await nase.opportunities({ limit: 10, min_confidence: 80 });
 await nase.alerts();
 await nase.explain(0);
+await nase.scoutOnce({ minConfidence: 85, minSpreadPct: 0.25 });
+await nase.paperTradeTop({ paperBudgetUsd: 500 });
+await nase.tradeIntentFor("<opportunity-id>");
 await nase.executableWethUsdcSanity();
 ```
 
-## Future Scout Mode
+## Scout Mode
 
-Scout Mode should watch `/api/alerts` and `/api/opportunities`, then notify the operator only when a candidate clears strict thresholds.
+Scout Mode watches `/api/alerts`, `/api/opportunities`, and `/api/explain/:id`, then notifies the operator only when a candidate clears strict thresholds.
 
 Suggested defaults:
 
@@ -122,23 +125,49 @@ Suggested defaults:
 - token and chain are allowlisted
 - quote age is acceptable
 
-## Future Paper Armed Mode
+Implemented modules:
 
-Paper Armed Mode should simulate:
+- `policy.js`: policy normalization, opportunity evaluation, ranking, paper simulation, and trade-intent drafting
+- `nase.js`: async Space Agent helper that calls NASE and applies the policy module
+- `store.js`: browser orchestration and local persistence
+
+## Paper Armed Mode
+
+Paper Armed Mode simulates:
 
 - budget allocation
-- route entry and exit
-- gas
+- gross edge
 - DEX fees
 - slippage
-- stale quote failures
-- hypothetical PnL
+- gas
+- latency haircut
+- confidence haircut
+- expected net PnL
 
-It should write a journal before any live mode is considered.
+It writes both a paper journal and a trade ledger before any live mode is considered.
 
-## Future Live Armed Mode
+## Trade Ledger
 
-Live Armed Mode must not live in browser customware.
+The ledger lives in:
+
+```text
+customware/L1/_all/mod/nase/arbitrage/ledger.js
+```
+
+It tracks:
+
+- paper simulations
+- trade-intent drafts
+- expected net PnL
+- realized net PnL when an execution result is recorded
+- win/loss/skipped/blocked/awaiting-executor outcomes
+- timestamped lifecycle events
+
+The workspace can mark ledger rows as win, loss, or skipped. A future executor can feed real fills into the same ledger shape.
+
+## Live Armed Mode Boundary
+
+Live Armed Mode must not live in browser customware. The current implementation only creates guarded trade-intent drafts.
 
 Space Agent may create a trade intent. A separate executor must own:
 

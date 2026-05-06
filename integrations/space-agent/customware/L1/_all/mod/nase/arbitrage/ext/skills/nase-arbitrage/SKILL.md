@@ -24,6 +24,9 @@ const top = await nase.topOpportunities(10);
 const sources = await nase.sourceHealth();
 const executable = await nase.executableQuotes();
 const sanity = await nase.executableWethUsdcSanity();
+const scout = await nase.scoutOnce({ minConfidence: 85, minSpreadPct: 0.25 });
+const paper = await nase.paperTradeTop({ paperBudgetUsd: 500, maxBudgetPerTradeUsd: 250 });
+const intent = await nase.tradeIntentFor("<opportunity-id>");
 ```
 
 Rules:
@@ -33,4 +36,7 @@ Rules:
 - When judging quote reliability, cite `confidence`, `executable`, `notes`, source mix, and source health.
 - Mention provider backoff explicitly when OpenOcean, LI.FI, or trafficdex are rate-limited.
 - Do not claim an opportunity is executable unless its quote has `executable: true` or `exec_depth` in notes.
+- Treat `scoutOnce()` actionable signals as notification candidates, not guaranteed profit.
+- Treat `paperTradeTop()` entries as simulated journal records, not fills.
+- Treat `tradeIntentFor()` as a draft that requires a separate executor; it never signs and never contains private keys.
 - For dashboard navigation, use `nase.dashboardUrl`.

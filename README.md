@@ -250,7 +250,7 @@ The first page is Space Agent's enter screen. Click `Enter Space` to open the NA
 
 The strongest use case for Space Agent is not another data source. It is an operator and automation layer.
 
-Recommended stages:
+Implemented stages:
 
 ### 1. Scout Mode
 
@@ -270,6 +270,14 @@ It notifies the user when a candidate looks interesting:
 
 Scout Mode never trades. It explains and alerts.
 
+The Space Agent pack now includes a testable Scout policy engine in:
+
+```text
+integrations/space-agent/customware/L1/_all/mod/nase/arbitrage/policy.js
+```
+
+The browser workspace can enable Scout Mode, tune thresholds, poll NASE, evaluate each explained opportunity, and raise browser notifications for fresh actionable candidates.
+
 ### 2. Paper Armed Mode
 
 Space Agent keeps a simulated budget and writes a trade journal:
@@ -284,6 +292,17 @@ Space Agent keeps a simulated budget and writes a trade journal:
 - missed or stale opportunities
 
 This is where thresholds should be tuned before real funds are exposed.
+
+Paper Armed Mode is implemented as simulation only. It estimates:
+
+- gross edge from spread and budget
+- DEX fees on both sides
+- slippage on both sides
+- chain gas on both sides
+- latency haircut
+- confidence haircut
+
+The output is written into the Space Agent paper journal and the trade ledger.
 
 ### 3. Live Armed Mode
 
@@ -305,6 +324,25 @@ Required guardrails:
 - audit log
 
 Space Agent must not hold private keys in the browser. NASE should not sign transactions. A separate executor should own signing, budget enforcement, and on-chain submission.
+
+In this repository, Live Armed Mode is intentionally limited to a trade-intent draft. The draft contains guardrails, budget, paper estimate, and blocked reasons. It never contains private keys and always marks `requires_executor: true`.
+
+### Trade Ledger
+
+Space Agent now tracks what it considered, paper-traded, and escalated:
+
+- paper simulations become `paper_trade` ledger records
+- trade-intent drafts become `trade_intent` ledger records
+- each record stores pair, route, budget, expected net, realized net when known, status, outcome, timestamps, and events
+- the workspace summarizes paper count, intent count, expected PnL, realized PnL, win/loss count, blocked count, and executor-waiting count
+
+The ledger module is separate from the policy module:
+
+```text
+integrations/space-agent/customware/L1/_all/mod/nase/arbitrage/ledger.js
+```
+
+This keeps the development shape modular: policy decides whether a candidate clears thresholds, simulation estimates the paper result, the ledger records what happened, and the UI only orchestrates those modules.
 
 ## Hardening Work Included In This Proposal
 

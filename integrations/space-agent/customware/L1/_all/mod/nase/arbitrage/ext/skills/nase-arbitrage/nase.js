@@ -1,3 +1,12 @@
+import {
+  DEFAULT_SCOUT_POLICY,
+  createTradeIntentDraft,
+  evaluateOpportunity,
+  normalizePolicy,
+  rankScoutSignals,
+  simulatePaperTrade,
+} from "../../../policy.js";
+
 const NASE_API_BASE = "http://127.0.0.1:8787";
 const dashboardUrl = "https://phd-postcard-brief-representation.trycloudflare.com/";
 
@@ -89,4 +98,90 @@ export async function executableWethUsdcSanity() {
   });
 }
 
-export { dashboardUrl };
+export async function scoutOnce(policy = {}) {
+  const safePolicy = normalizePolicy(policy);
+  const params = {
+    limit: safePolicy.maxExplain,
+    min_confidence: Math.max(0, safePolicy.minConfidence - 15),
+    min_spread: Math.max(0, safePolicy.minSpreadPct * 0.5),
+  };
+  const [opportunityData, alertData, sourceData] = await Promise.all([
+    opportunities(params),
+    alerts(),
+    sources(),
+  ]);
+  const alertItems = alertData.alerts || [];
+  const sourceItems = sourceData.sources || [];
+  const explanations = [];
+  for (const opportunity of (opportunityData.opportunities || []).slice(0, safePolicy.maxExplain)) {
+    try {
+      explanations.push(await explain(opportunity.id));
+    } catch (error) {
+      explanations.push({
+        opportunity,
+        analysis: {
+          caveats: [error?.message || String(error)],
+          executable_related_quotes: 0,
+          actionability: "blocked",
+        },
+        related_quotes: [],
+      });
+    }
+  }
+  const signals = rankScoutSignals(
+    explanations.map((payload) => evaluateOpportunity(payload, { alerts: alertItems, sources: sourceItems }, safePolicy)),
+  );
+  return {
+    mode: "scout",
+    cycle: opportunityData.cycle || alertData.cycle || 0,
+    updated_at: opportunityData.updated_at || alertData.updated_at || null,
+    policy: safePolicy,
+    alerts: alertItems,
+    sources: sourceItems,
+    count: signals.length,
+    actionable_count: signals.filter((signal) => signal.status === "actionable").length,
+    review_count: signals.filter((signal) => signal.status === "review").length,
+    blocked_count: signals.filter((signal) => signal.status === "blocked").length,
+    signals,
+  };
+}
+
+export async function paperTradeTop(policy = {}) {
+  const scout = await scoutOnce(policy);
+  const entries = [];
+  for (const signal of scout.signals.filter((item) => item.status !== "blocked").slice(0, 5)) {
+    const payload = await explain(signal.id);
+    entries.push(simulatePaperTrade(payload, { alerts: scout.alerts, sources: scout.sources, evaluation: signal }, scout.policy));
+  }
+  return {
+    mode: "paper",
+    cycle: scout.cycle,
+    updated_at: scout.updated_at,
+    policy: scout.policy,
+    entries,
+    scout,
+  };
+}
+
+export async function tradeIntentFor(idOrIndex, policy = {}) {
+  const safePolicy = normalizePolicy(policy);
+  const [payload, alertData, sourceData] = await Promise.all([
+    explain(idOrIndex),
+    alerts(),
+    sources(),
+  ]);
+  const context = { alerts: alertData.alerts || [], sources: sourceData.sources || [] };
+  const evaluation = evaluateOpportunity(payload, context, safePolicy);
+  const paper = simulatePaperTrade(payload, { ...context, evaluation }, safePolicy);
+  return createTradeIntentDraft(payload, { ...context, evaluation, paper }, safePolicy);
+}
+
+export {
+  DEFAULT_SCOUT_POLICY,
+  createTradeIntentDraft,
+  dashboardUrl,
+  evaluateOpportunity,
+  normalizePolicy,
+  rankScoutSignals,
+  simulatePaperTrade,
+};
