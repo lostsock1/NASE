@@ -168,3 +168,26 @@ A live executor must own:
 - audit log
 
 If an executor cannot satisfy the intent guardrails, it should reject the intent.
+
+## Executor Service
+
+This proposal now includes a first executor boundary. It is still dry-run by default, but it is useful because it validates a Space Agent trade intent against fresh NASE data and writes an audit record.
+
+The executor runs separately from Space Agent:
+
+```text
+http://127.0.0.1:8790
+```
+
+Space Agent can send a drafted intent to:
+
+- `POST /api/intents/validate`
+- `POST /api/intents/submit`
+
+The executor then fetches fresh `/api/explain/:id`, checks executable legs, quote TTL, notional, price bounds, budget limits, and human confirmation. If anything fails, it returns `rejected`. If everything passes while live trading is disabled, it returns `accepted_dry_run`.
+
+For the endpoint details and safety model, see:
+
+```text
+docs/executor.md
+```

@@ -27,6 +27,8 @@ const sanity = await nase.executableWethUsdcSanity();
 const scout = await nase.scoutOnce({ minConfidence: 85, minSpreadPct: 0.25 });
 const paper = await nase.paperTradeTop({ paperBudgetUsd: 500, maxBudgetPerTradeUsd: 250 });
 const intent = await nase.tradeIntentFor("<opportunity-id>");
+const checked = await nase.validateIntentWithExecutor(intent);
+const submitted = await nase.submitIntentToExecutor(intent);
 ```
 
 Rules:
@@ -40,4 +42,5 @@ Rules:
 - Treat `scoutOnce()` actionable signals as notification candidates, not guaranteed profit.
 - Treat `paperTradeTop()` entries as simulated journal records, not fills; market paper records are quote-time executable replays, while limit paper records are fill hypotheses.
 - Treat `tradeIntentFor()` as a draft that requires a separate executor; it never signs and never contains private keys.
+- Treat `validateIntentWithExecutor()` and `submitIntentToExecutor()` as server-side guard/audit calls; by default they dry-run and do not sign or broadcast.
 - For dashboard navigation, use `nase.dashboardUrl`.

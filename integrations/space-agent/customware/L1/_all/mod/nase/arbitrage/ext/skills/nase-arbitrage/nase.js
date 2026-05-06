@@ -9,14 +9,19 @@ import {
 } from "../../../policy.js";
 
 const DEFAULT_NASE_API_BASE = "http://127.0.0.1:8787";
+const DEFAULT_NASE_EXECUTOR_BASE = "http://127.0.0.1:8790";
 const dashboardUrl = "https://phd-postcard-brief-representation.trycloudflare.com/";
 
 function apiBase() {
   return globalThis.NASE_API_BASE || globalThis.localStorage?.getItem?.("nase:apiBase") || DEFAULT_NASE_API_BASE;
 }
 
-function proxyUrl(path) {
-  const target = new URL(path, apiBase());
+function executorBase() {
+  return globalThis.NASE_EXECUTOR_BASE || globalThis.localStorage?.getItem?.("nase:executorBase") || DEFAULT_NASE_EXECUTOR_BASE;
+}
+
+function proxyUrl(path, base = apiBase()) {
+  const target = new URL(path, base);
   return `/api/proxy?url=${encodeURIComponent(target.toString())}`;
 }
 
@@ -34,6 +39,28 @@ async function postJson(path) {
     throw new Error(`NASE ${path} failed: HTTP ${response.status}`);
   }
   return await response.json();
+}
+
+async function getExecutorJson(path) {
+  const response = await fetch(proxyUrl(path, executorBase()), { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`NASE executor ${path} failed: HTTP ${response.status}`);
+  }
+  return await response.json();
+}
+
+async function postExecutorJson(path, payload) {
+  const response = await fetch(proxyUrl(path, executorBase()), {
+    method: "POST",
+    cache: "no-store",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok && response.status !== 422) {
+    throw new Error(`NASE executor ${path} failed: HTTP ${response.status}`);
+  }
+  return data;
 }
 
 export async function snapshot() {
@@ -181,11 +208,28 @@ export async function tradeIntentFor(idOrIndex, policy = {}) {
   return createTradeIntentDraft(payload, { ...context, evaluation, paper }, safePolicy);
 }
 
+export async function executorHealth() {
+  return await getExecutorJson("/health");
+}
+
+export async function executorLedger(limit = 25) {
+  return await getExecutorJson(`/api/ledger?limit=${encodeURIComponent(String(limit))}`);
+}
+
+export async function validateIntentWithExecutor(intent, options = {}) {
+  return await postExecutorJson("/api/intents/validate", { intent, human_confirmed: Boolean(options.human_confirmed) });
+}
+
+export async function submitIntentToExecutor(intent, options = {}) {
+  return await postExecutorJson("/api/intents/submit", { intent, human_confirmed: Boolean(options.human_confirmed) });
+}
+
 export {
   DEFAULT_SCOUT_POLICY,
   createTradeIntentDraft,
   dashboardUrl,
   evaluateOpportunity,
+  executorBase,
   normalizePolicy,
   rankScoutSignals,
   resolveExecutableLegs,

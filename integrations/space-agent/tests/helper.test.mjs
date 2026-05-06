@@ -38,9 +38,27 @@ function jsonResponse(payload) {
   };
 }
 
-globalThis.fetch = async (input) => {
+globalThis.fetch = async (input, options = {}) => {
   const proxy = new URL(String(input), "http://space-agent.local");
   const target = new URL(proxy.searchParams.get("url"));
+  if (target.pathname === "/health") {
+    return jsonResponse({ ok: true, service: "nase-executor", live_trading_enabled: false });
+  }
+  if (target.pathname === "/api/intents/validate" || target.pathname === "/api/intents/submit") {
+    const body = JSON.parse(options.body || "{}");
+    return jsonResponse({
+      id: "decision-1",
+      intent_id: body.intent?.id,
+      opportunity_id: body.intent?.opportunity_id,
+      status: "accepted_dry_run",
+      submitted: false,
+      signed: false,
+      broadcast: false,
+      blocks: [],
+      warnings: ["live trading disabled; executor will only dry-run and audit"],
+      checks: [{ name: "fresh executable legs", ok: true }],
+    });
+  }
   if (target.pathname === "/api/opportunities") {
     return jsonResponse({ cycle: 7, updated_at: "2026-05-06T06:30:00Z", opportunities: [goodOpportunity, weakOpportunity] });
   }
@@ -121,5 +139,16 @@ assert.equal(marketIntent.execution_style, "market_exact_in");
 assert.equal(marketIntent.order_plan.market_order_allowed, true);
 assert.equal(marketIntent.order_plan.legs[0].order_type, "market_exact_in");
 assert.equal(marketIntent.order_plan.legs[0].max_slippage_bps, 4);
+
+const executorHealth = await nase.executorHealth();
+assert.equal(executorHealth.service, "nase-executor");
+
+const executorValidation = await nase.validateIntentWithExecutor(intent);
+assert.equal(executorValidation.status, "accepted_dry_run");
+assert.equal(executorValidation.intent_id, intent.id);
+
+const executorSubmission = await nase.submitIntentToExecutor(intent);
+assert.equal(executorSubmission.status, "accepted_dry_run");
+assert.equal(executorSubmission.submitted, false);
 
 console.log("helper.test.mjs passed");

@@ -56,6 +56,7 @@ For the practical workflow, strategy toggles, and the difference between discove
 
 ```text
 docs/operator-guide.md
+docs/executor.md
 ```
 
 ## Running Locally
@@ -104,15 +105,17 @@ The compose stack runs:
 
 - `nase-web`: the NASE web/API service.
 - `space-agent`: Space Agent with the NASE customware mounted through `CUSTOMWARE_PATH`.
+- `nase-executor`: a server-side dry-run executor boundary for validating Space Agent trade intents.
 
 Docker-specific behavior:
 
 - `.env` is used as a local runtime env file but is excluded from the image by `.dockerignore`.
 - The Space Agent browser helper normally points at `http://127.0.0.1:8787`; Compose overrides `config.js` so Space Agent proxies to `http://nase-web:8787` inside the Docker network.
+- The Space Agent executor helper normally points at `http://127.0.0.1:8790`; Compose overrides it to `http://nase-executor:8790`.
 - Published ports can be changed without editing files:
 
 ```bash
-NASE_WEB_PORT_PUBLISHED=18877 SPACE_AGENT_PORT_PUBLISHED=18878 docker compose up --build
+NASE_WEB_PORT_PUBLISHED=18877 SPACE_AGENT_PORT_PUBLISHED=18878 NASE_EXECUTOR_PORT_PUBLISHED=18879 docker compose up --build
 ```
 
 ## Configuration

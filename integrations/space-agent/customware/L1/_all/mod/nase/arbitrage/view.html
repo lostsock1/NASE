@@ -262,6 +262,32 @@
                 <div>
                   <strong x-text="$store.naseArbitrage.formatMoney(intent.paper.estimated_net_usd)"></strong>
                   <span x-text="intent.human_confirmation_required ? 'confirm required' : (intent.requires_executor ? 'executor required' : 'blocked')"></span>
+                  <button type="button" @click="$store.naseArbitrage.validateIntent(intent)"><x-icon>fact_check</x-icon></button>
+                  <button type="button" @click="$store.naseArbitrage.submitIntent(intent)"><x-icon>send</x-icon></button>
+                </div>
+              </article>
+            </template>
+          </div>
+        </section>
+
+        <section class="nase-card">
+          <div class="nase-card-head">
+            <div>
+              <h2>Executor Decisions</h2>
+              <p x-text="`${$store.naseArbitrage.executorDecisions.length} checks`"></p>
+            </div>
+          </div>
+          <div class="nase-list">
+            <template x-for="decision in $store.naseArbitrage.executorDecisions.slice(0, 5)" :key="decision.id">
+              <article class="nase-row">
+                <div>
+                  <strong x-text="decision.pair || decision.opportunity_id"></strong>
+                  <span x-text="`${decision.action} / ${decision.status}`"></span>
+                  <small x-text="decision.blocks?.[0] || decision.warnings?.[0] || 'ready'"></small>
+                </div>
+                <div>
+                  <strong x-text="decision.submitted ? 'submitted' : 'dry-run'"></strong>
+                  <span x-text="decision.signed ? 'signed' : 'unsigned'"></span>
                 </div>
               </article>
             </template>

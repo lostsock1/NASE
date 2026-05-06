@@ -6,7 +6,9 @@ import {
   scoutOnce,
   sources as fetchSources,
   snapshot,
+  submitIntentToExecutor,
   tradeIntentFor,
+  validateIntentWithExecutor,
 } from "./ext/skills/nase-arbitrage/nase.js";
 import {
   intentToLedger,
@@ -38,6 +40,7 @@ function installStore() {
     scoutSignals: [],
     paperJournal: [],
     tradeIntents: [],
+    executorDecisions: [],
     tradeLedger: [],
     seenSignalIds: new Set(),
     timer: null,
@@ -60,6 +63,7 @@ function installStore() {
         this.policy = normalizePolicy({ ...DEFAULT_SCOUT_POLICY, ...(saved.policy || {}) });
         this.paperJournal = Array.isArray(saved.paperJournal) ? saved.paperJournal.slice(0, 50) : [];
         this.tradeIntents = Array.isArray(saved.tradeIntents) ? saved.tradeIntents.slice(0, 25) : [];
+        this.executorDecisions = Array.isArray(saved.executorDecisions) ? saved.executorDecisions.slice(0, 50) : [];
         this.tradeLedger = normalizeLedger(saved.tradeLedger || []);
       } catch {
         this.policy = normalizePolicy(DEFAULT_SCOUT_POLICY);
@@ -74,6 +78,7 @@ function installStore() {
         policy: this.policy,
         paperJournal: this.paperJournal.slice(0, 50),
         tradeIntents: this.tradeIntents.slice(0, 25),
+        executorDecisions: this.executorDecisions.slice(0, 50),
         tradeLedger: this.tradeLedger.slice(0, 100),
       };
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -133,6 +138,37 @@ function installStore() {
       }
     },
 
+    async validateIntent(intent) {
+      await this.sendIntentToExecutor(intent, false);
+    },
+
+    async submitIntent(intent) {
+      await this.sendIntentToExecutor(intent, true);
+    },
+
+    async sendIntentToExecutor(intent, submit) {
+      if (!intent?.id) return;
+      this.scouting = true;
+      try {
+        const decision = submit
+          ? await submitIntentToExecutor(intent, { human_confirmed: !intent.human_confirmation_required })
+          : await validateIntentWithExecutor(intent, { human_confirmed: !intent.human_confirmation_required });
+        const decorated = { ...decision, action: submit ? "submit" : "validate", pair: intent.pair };
+        this.executorDecisions = [decorated, ...this.executorDecisions].slice(0, 50);
+        this.tradeIntents = this.tradeIntents.map((item) => (item.id === intent.id ? { ...item, executor_decision: decision } : item));
+        this.tradeLedger = this.tradeLedger.map((record) => {
+          if (record.opportunity_id !== intent.opportunity_id || record.type !== "trade_intent") return record;
+          const detail = decision.blocks?.[0] || decision.warnings?.[0] || decision.status;
+          return recordExecutionResult(record, { status: decision.status, detail });
+        });
+        this.saveAutomation();
+      } catch (error) {
+        this.error = error?.message || String(error);
+      } finally {
+        this.scouting = false;
+      }
+    },
+
     toggleScout() {
       this.scoutEnabled = !this.scoutEnabled;
       this.saveAutomation();
@@ -158,6 +194,7 @@ function installStore() {
     clearJournal() {
       this.paperJournal = [];
       this.tradeIntents = [];
+      this.executorDecisions = [];
       this.tradeLedger = [];
       this.saveAutomation();
     },

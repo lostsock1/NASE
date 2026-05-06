@@ -129,6 +129,8 @@ await nase.explain(0);
 await nase.scoutOnce({ minConfidence: 85, minSpreadPct: 0.25 });
 await nase.paperTradeTop({ paperBudgetUsd: 500 });
 await nase.tradeIntentFor("<opportunity-id>");
+await nase.validateIntentWithExecutor(intent);
+await nase.submitIntentToExecutor(intent);
 await nase.executableWethUsdcSanity();
 ```
 
@@ -216,3 +218,21 @@ Space Agent may create a trade intent. A separate executor must own:
 - on-chain submission
 
 NASE should not sign transactions. Space Agent should not hold private keys in browser storage.
+
+## Executor Boundary
+
+The integration can now send trade-intent drafts to the separate NASE executor service.
+
+Default local URL:
+
+```text
+http://127.0.0.1:8790
+```
+
+Docker overrides this to:
+
+```text
+http://nase-executor:8790
+```
+
+The executor performs fresh `/api/explain/:id` validation, quote TTL checks, executable-leg checks, notional and price-bound checks, budget checks, and audit logging. It is dry-run by default and returns `accepted_dry_run` or `rejected`.

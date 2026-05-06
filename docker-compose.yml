@@ -37,3 +37,27 @@ services:
     volumes:
       - .:/workspace/nase:ro
       - ./docker/space-agent-nase-config.js:/workspace/nase/integrations/space-agent/customware/L1/_all/mod/nase/arbitrage/config.js:ro
+
+  nase-executor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      nase-web:
+        condition: service_healthy
+    environment:
+      NASE_EXECUTOR_HOST: 0.0.0.0
+      NASE_EXECUTOR_PORT: 8790
+      NASE_API_BASE: http://nase-web:8787
+      NASE_EXECUTOR_LEDGER_PATH: /data/ledger.jsonl
+      NASE_EXECUTOR_LIVE_TRADING_ENABLED: "false"
+      NASE_EXECUTOR_MAX_TRADE_USD: "${NASE_EXECUTOR_MAX_TRADE_USD:-250}"
+      NASE_EXECUTOR_MAX_DAILY_USD: "${NASE_EXECUTOR_MAX_DAILY_USD:-1000}"
+    command: ["nase-executor"]
+    ports:
+      - "${NASE_EXECUTOR_PORT_PUBLISHED:-8790}:8790"
+    volumes:
+      - nase-executor-data:/data
+
+volumes:
+  nase-executor-data:

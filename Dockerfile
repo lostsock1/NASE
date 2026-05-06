@@ -16,9 +16,10 @@ COPY sources ./sources
 COPY tui ./tui
 COPY util ./util
 COPY web ./web
+COPY executor ./executor
 
 RUN python -m pip install -e .
 
-EXPOSE 8787
+EXPOSE 8787 8790
 
 CMD ["nase-web"]
