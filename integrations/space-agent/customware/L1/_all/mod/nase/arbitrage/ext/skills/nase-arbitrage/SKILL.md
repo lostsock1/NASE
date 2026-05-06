@@ -29,6 +29,8 @@ const paper = await nase.paperTradeTop({ paperBudgetUsd: 500, maxBudgetPerTradeU
 const intent = await nase.tradeIntentFor("<opportunity-id>");
 const checked = await nase.validateIntentWithExecutor(intent);
 const submitted = await nase.submitIntentToExecutor(intent);
+const run = await nase.startPaperRun({ duration_seconds: 600, interval_seconds: 30 });
+const runs = await nase.paperRuns();
 ```
 
 Rules:
@@ -43,4 +45,5 @@ Rules:
 - Treat `paperTradeTop()` entries as simulated journal records, not fills; market paper records are quote-time executable replays, while limit paper records are fill hypotheses.
 - Treat `tradeIntentFor()` as a draft that requires a separate executor; it never signs and never contains private keys.
 - Treat `validateIntentWithExecutor()` and `submitIntentToExecutor()` as server-side guard/audit calls; by default they dry-run and do not sign or broadcast.
+- Treat `startPaperRun()` as a server-side paper-trading run; it writes audit records and does not sign or broadcast.
 - For dashboard navigation, use `nase.dashboardUrl`.

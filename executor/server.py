@@ -7,6 +7,7 @@ from typing import Any
 from aiohttp import ClientSession, web
 
 from executor.ledger import AuditLedger
+from executor.paper_runner import PaperRunManager
 from executor.policy import ExecutorConfig, validate_intent
 
 
@@ -70,6 +71,23 @@ async def ledger(request: web.Request) -> web.Response:
     return web.json_response({"records": request.app["ledger"].latest(limit)}, dumps=_json_dumps)
 
 
+async def start_paper_run(request: web.Request) -> web.Response:
+    payload = await request.json()
+    run = request.app["paper_runs"].start_run(payload if isinstance(payload, dict) else {})
+    return web.json_response(run, dumps=_json_dumps)
+
+
+async def paper_runs(request: web.Request) -> web.Response:
+    return web.json_response({"runs": request.app["paper_runs"].list_runs()}, dumps=_json_dumps)
+
+
+async def paper_run(request: web.Request) -> web.Response:
+    run = request.app["paper_runs"].get_run(request.match_info["id"])
+    if run is None:
+        return web.json_response({"error": "paper run not found"}, status=404, dumps=_json_dumps)
+    return web.json_response(run, dumps=_json_dumps)
+
+
 async def _evaluate_payload(request: web.Request, payload: dict[str, Any]) -> dict[str, Any]:
     intent = _intent_from_payload(payload)
     fresh_explain = payload.get("fresh_explain") if isinstance(payload, dict) else None
@@ -110,9 +128,17 @@ async def make_app() -> web.Application:
     app.router.add_post("/api/intents/validate", validate)
     app.router.add_post("/api/intents/submit", submit)
     app.router.add_get("/api/ledger", ledger)
+    app.router.add_post("/api/paper-runs", start_paper_run)
+    app.router.add_get("/api/paper-runs", paper_runs)
+    app.router.add_get("/api/paper-runs/{id}", paper_run)
 
     async def on_startup(app_: web.Application) -> None:
         app_["http"] = ClientSession()
+        app_["paper_runs"] = PaperRunManager(
+            session=app_["http"],
+            nase_api_base=app_["nase_api_base"],
+            ledger=app_["ledger"],
+        )
 
     async def on_cleanup(app_: web.Application) -> None:
         await app_["http"].close()
@@ -130,4 +156,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

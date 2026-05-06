@@ -3,9 +3,12 @@ import {
   dashboardUrl,
   normalizePolicy,
   paperTradeTop,
+  paperRun,
+  paperRuns,
   scoutOnce,
   sources as fetchSources,
   snapshot,
+  startPaperRun,
   submitIntentToExecutor,
   tradeIntentFor,
   validateIntentWithExecutor,
@@ -41,17 +44,22 @@ function installStore() {
     paperJournal: [],
     tradeIntents: [],
     executorDecisions: [],
+    paperRuns: [],
+    activePaperRunId: "",
     tradeLedger: [],
     seenSignalIds: new Set(),
     timer: null,
     scoutTimer: null,
+    paperRunTimer: null,
 
     async init() {
       this.restoreAutomation();
       await this.refresh();
       this.timer = window.setInterval(() => this.refresh({ quiet: true }), 10000);
       this.scoutTimer = window.setInterval(() => this.runAutomation({ quiet: true }), 15000);
+      this.paperRunTimer = window.setInterval(() => this.refreshPaperRuns(), 15000);
       await this.runAutomation({ quiet: true });
+      await this.refreshPaperRuns();
     },
 
     restoreAutomation() {
@@ -64,6 +72,8 @@ function installStore() {
         this.paperJournal = Array.isArray(saved.paperJournal) ? saved.paperJournal.slice(0, 50) : [];
         this.tradeIntents = Array.isArray(saved.tradeIntents) ? saved.tradeIntents.slice(0, 25) : [];
         this.executorDecisions = Array.isArray(saved.executorDecisions) ? saved.executorDecisions.slice(0, 50) : [];
+        this.paperRuns = Array.isArray(saved.paperRuns) ? saved.paperRuns.slice(0, 20) : [];
+        this.activePaperRunId = saved.activePaperRunId || "";
         this.tradeLedger = normalizeLedger(saved.tradeLedger || []);
       } catch {
         this.policy = normalizePolicy(DEFAULT_SCOUT_POLICY);
@@ -79,6 +89,8 @@ function installStore() {
         paperJournal: this.paperJournal.slice(0, 50),
         tradeIntents: this.tradeIntents.slice(0, 25),
         executorDecisions: this.executorDecisions.slice(0, 50),
+        paperRuns: this.paperRuns.slice(0, 20),
+        activePaperRunId: this.activePaperRunId,
         tradeLedger: this.tradeLedger.slice(0, 100),
       };
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -169,6 +181,40 @@ function installStore() {
       }
     },
 
+    async startServerPaperRun(minutes = 10) {
+      this.scouting = true;
+      try {
+        const run = await startPaperRun({
+          duration_seconds: Math.max(1, Number(minutes || 10)) * 60,
+          interval_seconds: 30,
+          max_opportunities: 12,
+          policy: this.policy,
+        });
+        this.activePaperRunId = run.id;
+        this.paperRuns = [run, ...this.paperRuns.filter((item) => item.id !== run.id)].slice(0, 20);
+        this.saveAutomation();
+      } catch (error) {
+        this.error = error?.message || String(error);
+      } finally {
+        this.scouting = false;
+      }
+    },
+
+    async refreshPaperRuns() {
+      try {
+        if (this.activePaperRunId) {
+          const run = await paperRun(this.activePaperRunId);
+          this.paperRuns = [run, ...this.paperRuns.filter((item) => item.id !== run.id)].slice(0, 20);
+        } else {
+          const result = await paperRuns();
+          this.paperRuns = (result.runs || []).slice(0, 20);
+        }
+        this.saveAutomation();
+      } catch (error) {
+        this.error = error?.message || String(error);
+      }
+    },
+
     toggleScout() {
       this.scoutEnabled = !this.scoutEnabled;
       this.saveAutomation();
@@ -195,6 +241,8 @@ function installStore() {
       this.paperJournal = [];
       this.tradeIntents = [];
       this.executorDecisions = [];
+      this.paperRuns = [];
+      this.activePaperRunId = "";
       this.tradeLedger = [];
       this.saveAutomation();
     },

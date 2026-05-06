@@ -226,6 +226,10 @@
               <button type="button" class="secondary-button" @click="$store.naseArbitrage.clearJournal()">
                 <x-icon>delete</x-icon>
               </button>
+              <button type="button" class="secondary-button" :disabled="$store.naseArbitrage.scouting" @click="$store.naseArbitrage.startServerPaperRun(10)">
+                <x-icon>play_arrow</x-icon>
+                <span>Run 10m</span>
+              </button>
             </div>
             <div class="nase-list">
               <template x-for="entry in $store.naseArbitrage.paperJournal.slice(0, 6)" :key="entry.id">
@@ -243,6 +247,33 @@
               </template>
             </div>
           </article>
+        </section>
+
+        <section class="nase-card">
+          <div class="nase-card-head">
+            <div>
+              <h2>Server Paper Runs</h2>
+              <p x-text="`${$store.naseArbitrage.paperRuns.length} runs`"></p>
+            </div>
+            <button type="button" class="secondary-button" @click="$store.naseArbitrage.refreshPaperRuns()">
+              <x-icon>refresh</x-icon>
+            </button>
+          </div>
+          <div class="nase-list">
+            <template x-for="run in $store.naseArbitrage.paperRuns.slice(0, 5)" :key="run.id">
+              <article class="nase-row">
+                <div>
+                  <strong x-text="run.status"></strong>
+                  <span x-text="`${run.cycles} cycles / ${run.candidates} candidates`"></span>
+                  <small x-text="run.errors?.[0] || `${run.accepted} accepted / ${run.rejected} rejected`"></small>
+                </div>
+                <div>
+                  <strong x-text="`${Math.round((run.duration_seconds || 0) / 60)}m`"></strong>
+                  <span x-text="run.finished_at ? 'finished' : 'running'"></span>
+                </div>
+              </article>
+            </template>
+          </div>
         </section>
 
         <section class="nase-card">

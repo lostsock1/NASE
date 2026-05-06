@@ -216,6 +216,18 @@ export async function executorLedger(limit = 25) {
   return await getExecutorJson(`/api/ledger?limit=${encodeURIComponent(String(limit))}`);
 }
 
+export async function startPaperRun(options = {}) {
+  return await postExecutorJson("/api/paper-runs", options);
+}
+
+export async function paperRuns() {
+  return await getExecutorJson("/api/paper-runs");
+}
+
+export async function paperRun(id) {
+  return await getExecutorJson(`/api/paper-runs/${encodeURIComponent(String(id))}`);
+}
+
 export async function validateIntentWithExecutor(intent, options = {}) {
   return await postExecutorJson("/api/intents/validate", { intent, human_confirmed: Boolean(options.human_confirmed) });
 }

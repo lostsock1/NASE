@@ -59,6 +59,26 @@ globalThis.fetch = async (input, options = {}) => {
       checks: [{ name: "fresh executable legs", ok: true }],
     });
   }
+  if (target.pathname === "/api/paper-runs" && options.method === "POST") {
+    const body = JSON.parse(options.body || "{}");
+    return jsonResponse({
+      id: "run-1",
+      status: "running",
+      duration_seconds: body.duration_seconds,
+      interval_seconds: body.interval_seconds,
+      cycles: 0,
+      candidates: 0,
+      accepted: 0,
+      rejected: 0,
+      latest_entries: [],
+    });
+  }
+  if (target.pathname === "/api/paper-runs") {
+    return jsonResponse({ runs: [{ id: "run-1", status: "completed", cycles: 2, candidates: 2, accepted: 1, rejected: 1, latest_entries: [] }] });
+  }
+  if (target.pathname === "/api/paper-runs/run-1") {
+    return jsonResponse({ id: "run-1", status: "completed", cycles: 2, candidates: 2, accepted: 1, rejected: 1, latest_entries: [] });
+  }
   if (target.pathname === "/api/opportunities") {
     return jsonResponse({ cycle: 7, updated_at: "2026-05-06T06:30:00Z", opportunities: [goodOpportunity, weakOpportunity] });
   }
@@ -150,5 +170,15 @@ assert.equal(executorValidation.intent_id, intent.id);
 const executorSubmission = await nase.submitIntentToExecutor(intent);
 assert.equal(executorSubmission.status, "accepted_dry_run");
 assert.equal(executorSubmission.submitted, false);
+
+const startedRun = await nase.startPaperRun({ duration_seconds: 600, interval_seconds: 30, policy });
+assert.equal(startedRun.id, "run-1");
+assert.equal(startedRun.status, "running");
+
+const runList = await nase.paperRuns();
+assert.equal(runList.runs[0].status, "completed");
+
+const runDetail = await nase.paperRun("run-1");
+assert.equal(runDetail.accepted, 1);
 
 console.log("helper.test.mjs passed");

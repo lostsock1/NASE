@@ -62,6 +62,37 @@ Runs the same validation and writes a JSONL audit record. In the default configu
 
 Returns the latest audit records.
 
+### `POST /api/paper-runs`
+
+Starts a server-side paper-trading run.
+
+Payload:
+
+```json
+{
+  "duration_seconds": 600,
+  "interval_seconds": 30,
+  "max_opportunities": 12,
+  "policy": {
+    "minConfidence": 70,
+    "minSpreadPct": 0.05,
+    "minNetEdgeUsd": 0,
+    "paperBudgetUsd": 250,
+    "maxBudgetPerTradeUsd": 100
+  }
+}
+```
+
+The run polls NASE in the background, evaluates opportunities, requires executable quote-depth legs, simulates market paper results, and appends `paper_run_entry` records to the audit ledger.
+
+### `GET /api/paper-runs`
+
+Lists in-memory run summaries for the current executor process.
+
+### `GET /api/paper-runs/:id`
+
+Returns a run summary including recent entries.
+
 ## Docker
 
 `docker compose up --build` starts:
@@ -104,3 +135,9 @@ The executor rejects intents when:
 - per-trade or daily budget would be exceeded
 
 This makes the executor useful immediately as a guard and audit layer, even before real trading is added.
+
+## Paper-Run Boundary
+
+Server paper runs are still simulations. They do not submit intents, sign, or broadcast. They are useful for letting a strategy run for 10 minutes, 1 hour, or longer without depending on browser timers.
+
+Each entry records whether the candidate was `paper_candidate` or `paper_reject`, the executable quote-depth evidence, net edge, costs, reasons, and source route.

@@ -183,8 +183,11 @@ Space Agent can send a drafted intent to:
 
 - `POST /api/intents/validate`
 - `POST /api/intents/submit`
+- `POST /api/paper-runs`
 
 The executor then fetches fresh `/api/explain/:id`, checks executable legs, quote TTL, notional, price bounds, budget limits, and human confirmation. If anything fails, it returns `rejected`. If everything passes while live trading is disabled, it returns `accepted_dry_run`.
+
+For longer strategy checks, Space Agent can start a server-side paper run. A 10-minute run polls NASE every 30 seconds, evaluates the current candidates, writes recent entries into the executor run state, and appends durable audit records. This is more reliable than a browser-only timer and keeps the implementation modular.
 
 For the endpoint details and safety model, see:
 
